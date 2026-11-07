@@ -1,0 +1,85 @@
+import Foundation
+import AppKit
+
+@MainActor
+public final class StatusItemManager {
+    public static let shared = StatusItemManager()
+
+    private var statusItem: NSStatusItem?
+
+    private init() {}
+
+    public func setup() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.statusItem = item
+
+        if let button = item.button {
+            button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "WinV Clipboard")
+            button.image?.isTemplate = true
+        }
+
+        rebuildMenu()
+    }
+
+    public func rebuildMenu() {
+        guard let statusItem = statusItem else { return }
+
+        let menu = NSMenu()
+
+        let shortcutDisplay = HotkeyManager.shared.activeShortcut.displayString
+
+        let showItem = NSMenuItem(title: "Show Clipboard (\(shortcutDisplay))", action: #selector(handleShowClipboard), keyEquivalent: "")
+        showItem.target = self
+        menu.addItem(showItem)
+
+        let isPaused = PrivacyFilter.shared.isMonitoringPaused
+        let pauseItem = NSMenuItem(title: isPaused ? "Resume Monitoring" : "Pause Monitoring", action: #selector(handleTogglePause), keyEquivalent: "")
+        pauseItem.state = isPaused ? .on : .off
+        pauseItem.target = self
+        menu.addItem(pauseItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let prefsItem = NSMenuItem(title: "Preferences...", action: #selector(handleOpenPreferences), keyEquivalent: ",")
+        prefsItem.target = self
+        menu.addItem(prefsItem)
+
+        let isTrusted = PasteInjector.isAccessibilityTrusted
+        let permItem = NSMenuItem(title: isTrusted ? "Accessibility: Active" : "Accessibility: Required (Click to Grant)", action: #selector(handleCheckPermissions), keyEquivalent: "")
+        permItem.target = self
+        permItem.image = NSImage(systemSymbolName: isTrusted ? "checkmark.circle" : "exclamationmark.triangle", accessibilityDescription: nil)
+        menu.addItem(permItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let quitItem = NSMenuItem(title: "Quit WinV Clipboard", action: #selector(handleQuit), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+
+        statusItem.menu = menu
+    }
+
+    @objc private func handleShowClipboard() {
+        PanelController.shared.toggle()
+    }
+
+    @objc private func handleTogglePause() {
+        PrivacyFilter.shared.isMonitoringPaused.toggle()
+        rebuildMenu()
+    }
+
+    @objc private func handleOpenPreferences() {
+        SettingsWindowController.shared.show()
+    }
+
+    @objc private func handleCheckPermissions() {
+        if !PasteInjector.isAccessibilityTrusted {
+            PasteInjector.promptForAccessibility()
+        }
+        SettingsWindowController.shared.show()
+    }
+
+    @objc private func handleQuit() {
+        NSApp.terminate(nil)
+    }
+}
