@@ -22,7 +22,7 @@ public final class ClipboardPanel: NSPanel {
         self.hasShadow = true
         self.backgroundColor = .clear
         self.isOpaque = false
-        self.isMovableByWindowBackground = false
+        self.isMovableByWindowBackground = true
         self.hidesOnDeactivate = false
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     }

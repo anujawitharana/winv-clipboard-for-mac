@@ -132,7 +132,7 @@ public struct ClipboardCardView: View {
             }
 
         case .fileURL:
-            if let filePath = item.plainText, isImageFile(filePath), let image = NSImage(contentsOfFile: filePath) {
+            if let thumbPath = item.thumbnailRelativePath, let image = store.thumbnailImage(for: thumbPath) {
                 VStack(alignment: .leading, spacing: 4) {
                     Image(nsImage: image)
                         .resizable()
@@ -144,10 +144,12 @@ public struct ClipboardCardView: View {
                                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
                         )
 
-                    Text((filePath as NSString).lastPathComponent)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
+                    if let filePath = item.plainText {
+                        Text((filePath as NSString).lastPathComponent)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                    }
                 }
             } else {
                 VStack(alignment: .leading, spacing: 2) {
@@ -198,9 +200,6 @@ public struct ClipboardCardView: View {
         }
         if let imgPath = item.imageRelativePath, let image = store.fullImage(for: imgPath) {
             return image
-        }
-        if let filePath = item.plainText, FileManager.default.fileExists(atPath: filePath) {
-            return NSImage(contentsOfFile: filePath)
         }
         return nil
     }

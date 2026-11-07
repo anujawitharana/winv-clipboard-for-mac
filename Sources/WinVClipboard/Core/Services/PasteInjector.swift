@@ -24,37 +24,23 @@ public final class PasteInjector: @unchecked Sendable {
 
         switch item.contentType {
         case .image:
-            var wroteData = false
             if let relPath = item.imageRelativePath, let imgData = store.fullImageData(for: relPath) {
                 pasteboard.setData(imgData, forType: .png)
                 if let nsImage = NSImage(data: imgData), let tiff = nsImage.tiffRepresentation {
                     pasteboard.setData(tiff, forType: .tiff)
                 }
-                wroteData = true
             }
 
-            // If this image originated from a local file, also supply file URL
+            // If this image originated from a local file, supply file URL
             if let path = item.plainText, FileManager.default.fileExists(atPath: path) {
                 let url = URL(fileURLWithPath: path)
                 pasteboard.writeObjects([url as NSURL])
-
-                // If relative path didn't have data, read from file
-                if !wroteData, let fileData = try? Data(contentsOf: url) {
-                    pasteboard.setData(fileData, forType: .png)
-                }
             }
 
         case .fileURL:
             if let path = item.plainText {
                 let url = URL(fileURLWithPath: path)
                 pasteboard.writeObjects([url as NSURL])
-
-                // If file is an image, also provide image data so apps like Discord/Slack/Photoshop can paste the image directly
-                let ext = url.pathExtension.lowercased()
-                let imageExts: Set<String> = ["png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "tif", "bmp"]
-                if imageExts.contains(ext), let fileData = try? Data(contentsOf: url) {
-                    pasteboard.setData(fileData, forType: .png)
-                }
             }
 
         case .webURL:

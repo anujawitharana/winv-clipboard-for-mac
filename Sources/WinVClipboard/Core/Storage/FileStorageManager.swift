@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 import ImageIO
 import CommonCrypto
+import QuickLookThumbnailing
 
 public final class FileStorageManager: @unchecked Sendable {
     private let baseDirectory: URL
@@ -83,6 +84,33 @@ public final class FileStorageManager: @unchecked Sendable {
             for rel in relativePaths.compactMap({ $0 }) {
                 let url = self.fullURL(for: rel)
                 try? FileManager.default.removeItem(at: url)
+            }
+        }
+    }
+
+    public func generateThumbnail(forFileAt fileURL: URL, contentHash: String, completion: @escaping @Sendable (String?) -> Void) {
+        let thumbFilename = "\(contentHash)_thumb.png"
+        let thumbnailFileUrl = thumbnailsDirectory.appendingPathComponent(thumbFilename)
+
+        if FileManager.default.fileExists(atPath: thumbnailFileUrl.path) {
+            completion("thumbnails/\(thumbFilename)")
+            return
+        }
+
+        let size = CGSize(width: 300, height: 300)
+        let request = QLThumbnailGenerator.Request(fileAt: fileURL, size: size, scale: 2.0, representationTypes: .thumbnail)
+
+        QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { representation, error in
+            guard let rep = representation else {
+                completion(nil)
+                return
+            }
+            let bitmapRep = NSBitmapImageRep(cgImage: rep.cgImage)
+            if let pngData = bitmapRep.representation(using: .png, properties: [:]) {
+                try? pngData.write(to: thumbnailFileUrl, options: .atomic)
+                completion("thumbnails/\(thumbFilename)")
+            } else {
+                completion(nil)
             }
         }
     }

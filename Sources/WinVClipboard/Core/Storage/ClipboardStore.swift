@@ -130,6 +130,20 @@ public final class ClipboardStore: ObservableObject {
 
                 dbManager.insertOrUpdateItem(newItem)
 
+                // If thumbnail wasn't pre-generated from memory data, generate via QuickLook for files
+                if thumbRelPath == nil, (contentType == .image || contentType == .fileURL), let path = plainText {
+                    let url = URL(fileURLWithPath: path)
+                    let itemId = newItem.id
+                    fileManager.generateThumbnail(forFileAt: url, contentHash: contentHash) { [weak self, dbManager] generatedThumb in
+                        if let thumb = generatedThumb {
+                            dbManager.updateThumbnailPath(id: itemId, thumbnailPath: thumb)
+                            Task { @MainActor [weak self] in
+                                self?.refresh()
+                            }
+                        }
+                    }
+                }
+
                 // Prune unpinned beyond limit
                 let prunedPaths = dbManager.pruneUnpinned(keepMax: maxHistoryCount)
                 for pathPair in prunedPaths {

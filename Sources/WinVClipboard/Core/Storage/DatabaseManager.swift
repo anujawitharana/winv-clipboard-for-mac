@@ -349,6 +349,20 @@ public final class DatabaseManager: @unchecked Sendable {
         }
     }
 
+    public func updateThumbnailPath(id: UUID, thumbnailPath: String) {
+        queue.sync {
+            guard let db = db else { return }
+            let sql = "UPDATE clipboard_items SET thumbnail_rel_path = ? WHERE id = ?;"
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+                sqlite3_bind_text(stmt, 1, (thumbnailPath as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(stmt, 2, (id.uuidString as NSString).utf8String, -1, nil)
+                sqlite3_step(stmt)
+            }
+            sqlite3_finalize(stmt)
+        }
+    }
+
     public func deleteItem(id: UUID) -> (imagePath: String?, thumbPath: String?) {
         return queue.sync {
             guard let db = db else { return (nil, nil) }

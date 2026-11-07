@@ -102,7 +102,7 @@ public final class ClipboardMonitor: @unchecked Sendable {
         var capturedImageData: Data?
         for imgType in imageTypes {
             if types.contains(imgType), let data = pasteboard.data(forType: imgType), !data.isEmpty {
-                if data.count <= 30 * 1024 * 1024 {
+                if data.count <= 100 * 1024 * 1024 {
                     if imgType == .tiff, let rep = NSBitmapImageRep(data: data), let png = rep.representation(using: .png, properties: [:]) {
                         capturedImageData = png
                     } else {
@@ -149,34 +149,16 @@ public final class ClipboardMonitor: @unchecked Sendable {
                 "png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "tif", "bmp", "svg", "ico", "icns", "avif"
             ]
 
-            // If it's an image file, load image data and save as .image with thumbnail preview!
-            if imageExtensions.contains(ext), let imgData = try? Data(contentsOf: firstURL), !imgData.isEmpty, imgData.count <= 30 * 1024 * 1024 {
-                let hash = sha256(data: imgData)
-                Task { @MainActor in
-                    let maxCount = UserDefaults.standard.integer(forKey: "WinVMaxHistory")
-                    ClipboardStore.shared.addOrUpdateItem(
-                        contentType: .image,
-                        plainText: path,
-                        richContent: nil,
-                        imageData: imgData,
-                        sourceAppName: sourceAppName,
-                        sourceAppBundleId: sourceBundleID,
-                        contentHash: hash,
-                        maxHistoryCount: maxCount > 0 ? maxCount : 50
-                    )
-                }
-                return
-            }
-
-            // Normal non-image file
+            let isImg = imageExtensions.contains(ext)
             let hash = sha256(string: "file:" + path)
+
             Task { @MainActor in
                 let maxCount = UserDefaults.standard.integer(forKey: "WinVMaxHistory")
                 ClipboardStore.shared.addOrUpdateItem(
-                    contentType: .fileURL,
+                    contentType: isImg ? .image : .fileURL,
                     plainText: path,
                     richContent: nil,
-                    imageData: nil,
+                    imageData: nil, // Avoid direct file read to prevent macOS folder permission popups
                     sourceAppName: sourceAppName,
                     sourceAppBundleId: sourceBundleID,
                     contentHash: hash,

@@ -8,6 +8,12 @@ public struct FlyoutHeaderView: View {
 
     public var body: some View {
         VStack(spacing: 8) {
+            // Drag Handle Grip
+            Capsule()
+                .fill(Color.primary.opacity(0.2))
+                .frame(width: 36, height: 4)
+                .padding(.top, 2)
+
             // Top Bar
             HStack(spacing: 8) {
                 Image(systemName: "doc.on.clipboard.fill")
