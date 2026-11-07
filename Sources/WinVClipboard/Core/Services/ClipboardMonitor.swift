@@ -89,29 +89,76 @@ public final class ClipboardMonitor: @unchecked Sendable {
     private func processPasteboardData(sourceAppName: String?, sourceBundleID: String?) {
         guard let types = pasteboard.types, !types.isEmpty else { return }
 
-        // 1. Check for Image content
-        let imageTypes: [NSPasteboard.PasteboardType] = [.png, .tiff]
+        // 1. Check for Direct Image content (PNG, TIFF, JPEG, HEIC, GIF, or NSImage)
+        let imageTypes: [NSPasteboard.PasteboardType] = [
+            .png,
+            .tiff,
+            NSPasteboard.PasteboardType("public.jpeg"),
+            NSPasteboard.PasteboardType("public.heic"),
+            NSPasteboard.PasteboardType("com.compuserve.gif"),
+            NSPasteboard.PasteboardType("public.image")
+        ]
+
+        var capturedImageData: Data?
         for imgType in imageTypes {
-            if types.contains(imgType), let data = pasteboard.data(forType: imgType) {
-                // Ensure image is within safe size (30 MB limit)
-                guard data.count > 0 && data.count <= 30 * 1024 * 1024 else { return }
-
-                // Convert TIFF to PNG data if needed
-                let finalData: Data
-                if imgType == .tiff, let rep = NSBitmapImageRep(data: data), let png = rep.representation(using: .png, properties: [:]) {
-                    finalData = png
-                } else {
-                    finalData = data
+            if types.contains(imgType), let data = pasteboard.data(forType: imgType), !data.isEmpty {
+                if data.count <= 30 * 1024 * 1024 {
+                    if imgType == .tiff, let rep = NSBitmapImageRep(data: data), let png = rep.representation(using: .png, properties: [:]) {
+                        capturedImageData = png
+                    } else {
+                        capturedImageData = data
+                    }
+                    break
                 }
+            }
+        }
 
-                let hash = sha256(data: finalData)
+        // Also check if NSImage can read objects directly (e.g. from browsers, screenshots, Preview)
+        if capturedImageData == nil,
+           let images = pasteboard.readObjects(forClasses: [NSImage.self], options: nil) as? [NSImage],
+           let firstImage = images.first,
+           let tiff = firstImage.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tiff),
+           let png = rep.representation(using: .png, properties: [:]) {
+            capturedImageData = png
+        }
+
+        if let finalData = capturedImageData {
+            let hash = sha256(data: finalData)
+            Task { @MainActor in
+                let maxCount = UserDefaults.standard.integer(forKey: "WinVMaxHistory")
+                ClipboardStore.shared.addOrUpdateItem(
+                    contentType: .image,
+                    plainText: nil,
+                    richContent: nil,
+                    imageData: finalData,
+                    sourceAppName: sourceAppName,
+                    sourceAppBundleId: sourceBundleID,
+                    contentHash: hash,
+                    maxHistoryCount: maxCount > 0 ? maxCount : 50
+                )
+            }
+            return
+        }
+
+        // 2. Check for File URLs
+        if types.contains(.fileURL), let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let firstURL = urls.first {
+            let path = firstURL.path
+            let ext = firstURL.pathExtension.lowercased()
+            let imageExtensions: Set<String> = [
+                "png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "tif", "bmp", "svg", "ico", "icns", "avif"
+            ]
+
+            // If it's an image file, load image data and save as .image with thumbnail preview!
+            if imageExtensions.contains(ext), let imgData = try? Data(contentsOf: firstURL), !imgData.isEmpty, imgData.count <= 30 * 1024 * 1024 {
+                let hash = sha256(data: imgData)
                 Task { @MainActor in
                     let maxCount = UserDefaults.standard.integer(forKey: "WinVMaxHistory")
                     ClipboardStore.shared.addOrUpdateItem(
                         contentType: .image,
-                        plainText: nil,
+                        plainText: path,
                         richContent: nil,
-                        imageData: finalData,
+                        imageData: imgData,
                         sourceAppName: sourceAppName,
                         sourceAppBundleId: sourceBundleID,
                         contentHash: hash,
@@ -120,11 +167,8 @@ public final class ClipboardMonitor: @unchecked Sendable {
                 }
                 return
             }
-        }
 
-        // 2. Check for File URLs
-        if types.contains(.fileURL), let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let firstURL = urls.first {
-            let path = firstURL.path
+            // Normal non-image file
             let hash = sha256(string: "file:" + path)
             Task { @MainActor in
                 let maxCount = UserDefaults.standard.integer(forKey: "WinVMaxHistory")

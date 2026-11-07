@@ -222,4 +222,41 @@ final class WinVClipboardTests: XCTestCase {
         store.selectPrevious()
         XCTAssertEqual(store.selectedItemId, item1.id)
     }
+
+    func testImageFileDetectionAndPreview() {
+        // Create a temporary PNG image file on disk
+        let imageFileURL = tempDirectory.appendingPathComponent("test_screenshot.png")
+        let img = NSImage(size: NSSize(width: 200, height: 150))
+        img.lockFocus()
+        NSColor.blue.setFill()
+        NSRect(x: 0, y: 0, width: 200, height: 150).fill()
+        img.unlockFocus()
+
+        let tiff = img.tiffRepresentation!
+        let rep = NSBitmapImageRep(data: tiff)!
+        let pngData = rep.representation(using: .png, properties: [:])!
+        try? pngData.write(to: imageFileURL)
+
+        // Save image via FileStorageManager
+        let paths = fileManager.saveImageData(pngData, contentHash: "screenshot_hash")
+        XCTAssertNotNil(paths.thumbnailPath)
+
+        let item = ClipboardItem(
+            id: UUID(),
+            contentType: .image,
+            plainText: imageFileURL.path,
+            imageRelativePath: paths.imagePath,
+            thumbnailRelativePath: paths.thumbnailPath,
+            contentHash: "screenshot_hash"
+        )
+        dbManager.insertOrUpdateItem(item)
+
+        let fetched = dbManager.fetchItems(limit: 5)
+        XCTAssertEqual(fetched.first?.contentType, .image)
+        XCTAssertEqual(fetched.first?.plainText, imageFileURL.path)
+        XCTAssertNotNil(fetched.first?.thumbnailRelativePath)
+
+        let thumb = fileManager.loadThumbnailImage(for: fetched.first!.thumbnailRelativePath!)
+        XCTAssertNotNil(thumb)
+    }
 }

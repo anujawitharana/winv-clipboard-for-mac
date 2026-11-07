@@ -24,14 +24,39 @@ public final class PasteInjector: @unchecked Sendable {
 
         switch item.contentType {
         case .image:
+            var wroteData = false
             if let relPath = item.imageRelativePath, let imgData = store.fullImageData(for: relPath) {
                 pasteboard.setData(imgData, forType: .png)
+                if let nsImage = NSImage(data: imgData), let tiff = nsImage.tiffRepresentation {
+                    pasteboard.setData(tiff, forType: .tiff)
+                }
+                wroteData = true
             }
+
+            // If this image originated from a local file, also supply file URL
+            if let path = item.plainText, FileManager.default.fileExists(atPath: path) {
+                let url = URL(fileURLWithPath: path)
+                pasteboard.writeObjects([url as NSURL])
+
+                // If relative path didn't have data, read from file
+                if !wroteData, let fileData = try? Data(contentsOf: url) {
+                    pasteboard.setData(fileData, forType: .png)
+                }
+            }
+
         case .fileURL:
             if let path = item.plainText {
                 let url = URL(fileURLWithPath: path)
                 pasteboard.writeObjects([url as NSURL])
+
+                // If file is an image, also provide image data so apps like Discord/Slack/Photoshop can paste the image directly
+                let ext = url.pathExtension.lowercased()
+                let imageExts: Set<String> = ["png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "tif", "bmp"]
+                if imageExts.contains(ext), let fileData = try? Data(contentsOf: url) {
+                    pasteboard.setData(fileData, forType: .png)
+                }
             }
+
         case .webURL:
             if let text = item.plainText {
                 pasteboard.setString(text, forType: .string)
@@ -39,6 +64,7 @@ public final class PasteInjector: @unchecked Sendable {
                     pasteboard.setString(url.absoluteString, forType: .URL)
                 }
             }
+
         case .rtf:
             if let rich = item.richContent, let rtfData = rich.data(using: .utf8) {
                 pasteboard.setData(rtfData, forType: .rtf)
@@ -46,6 +72,7 @@ public final class PasteInjector: @unchecked Sendable {
             if let plain = item.plainText {
                 pasteboard.setString(plain, forType: .string)
             }
+
         case .html:
             if let rich = item.richContent {
                 pasteboard.setString(rich, forType: .html)
@@ -53,23 +80,32 @@ public final class PasteInjector: @unchecked Sendable {
             if let plain = item.plainText {
                 pasteboard.setString(plain, forType: .string)
             }
+
         case .text:
             if let text = item.plainText {
                 pasteboard.setString(text, forType: .string)
             }
         }
 
-        // 2. Dismiss panel callback
+        // 2. Dismiss panel callback immediately
         onComplete?()
 
         // 3. Deactivate self and restore original frontmost application
         NSApp.deactivate()
-        if let target = targetApp {
+
+        var appToActivate = targetApp
+        if appToActivate == nil || appToActivate?.bundleIdentifier == Bundle.main.bundleIdentifier {
+            appToActivate = NSWorkspace.shared.runningApplications.first(where: {
+                $0.activationPolicy == .regular && $0.bundleIdentifier != Bundle.main.bundleIdentifier && !$0.isTerminated
+            })
+        }
+
+        if let target = appToActivate {
             target.activate()
         }
 
-        // 4. Simulate Cmd + V after focus settle delay (120ms ensures OS routes focus to target window)
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(120)) {
+        // 4. Simulate Cmd + V after focus settle delay (100ms ensures target window is active)
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
             if AXIsProcessTrusted() {
                 self.dispatchSyntheticPaste()
             } else {

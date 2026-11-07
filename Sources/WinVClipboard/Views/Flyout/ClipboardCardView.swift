@@ -12,81 +12,86 @@ public struct ClipboardCardView: View {
     @ObservedObject private var store = ClipboardStore.shared
 
     public var body: some View {
-        Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 6) {
-                // Card Header: Content Type / App name + Actions
-                HStack(alignment: .center, spacing: 6) {
-                    Image(systemName: item.contentType.systemIcon)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.accentColor)
+        VStack(alignment: .leading, spacing: 6) {
+            // Card Header: Content Type / App name + Actions
+            HStack(alignment: .center, spacing: 6) {
+                Image(systemName: item.contentType.systemIcon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.accentColor)
 
-                    if let appName = item.sourceAppName, !appName.isEmpty {
-                        Text(appName)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
+                if let appName = item.sourceAppName, !appName.isEmpty {
+                    Text(appName)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
 
-                    Spacer()
+                Spacer()
 
-                    // Timestamp
-                    Text(item.relativeTimeFormatted)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary.opacity(0.8))
+                // Timestamp
+                Text(item.relativeTimeFormatted)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.8))
 
-                    // Pin Button
-                    Button(action: onTogglePin) {
-                        Image(systemName: item.isPinned ? "pin.fill" : "pin")
+                // Pin Button
+                Button(action: onTogglePin) {
+                    Image(systemName: item.isPinned ? "pin.fill" : "pin")
+                        .font(.system(size: 11))
+                        .foregroundColor(item.isPinned ? .accentColor : .secondary)
+                        .padding(4)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(item.isPinned ? "Unpin item" : "Pin item")
+
+                // Delete Button (visible on hover or if pinned/focused)
+                if isHovered || isSelected {
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
                             .font(.system(size: 11))
-                            .foregroundColor(item.isPinned ? .accentColor : .secondary)
+                            .foregroundColor(.secondary)
                             .padding(4)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .help(item.isPinned ? "Unpin item" : "Pin item")
-
-                    // Delete Button (visible on hover or if pinned/focused)
-                    if isHovered || isSelected {
-                        Button(action: onDelete) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                                .padding(4)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Delete item")
-                    }
-                }
-
-                // Card Body
-                cardBodyContent()
-
-                // Card Footer for Code / Length metadata
-                if item.contentType == .text && item.charCount > 0 {
-                    HStack {
-                        Spacer()
-                        Text("\(item.charCount) chars")
-                            .font(.system(size: 9))
-                            .foregroundColor(.secondary.opacity(0.6))
-                    }
+                    .help("Delete item")
                 }
             }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(backgroundColor)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(borderColor, lineWidth: isSelected ? 1.5 : 1)
-            )
-            .contentShape(Rectangle())
+
+            // Card Body
+            cardBodyContent()
+
+            // Card Footer for Code / Length metadata
+            if item.contentType == .text && item.charCount > 0 {
+                HStack {
+                    Spacer()
+                    Text("\(item.charCount) chars")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary.opacity(0.6))
+                }
+            }
         }
-        .buttonStyle(.plain)
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(backgroundColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(borderColor, lineWidth: isSelected ? 1.5 : 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onSelect()
+        }
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.12)) {
                 isHovered = hovering
+            }
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
             }
         }
     }
@@ -95,28 +100,72 @@ public struct ClipboardCardView: View {
     private func cardBodyContent() -> some View {
         switch item.contentType {
         case .image:
-            if let thumbPath = item.thumbnailRelativePath, let image = store.thumbnailImage(for: thumbPath) {
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxHeight: 120)
-                    .cornerRadius(4)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    )
-            } else {
-                HStack(spacing: 6) {
-                    Image(systemName: "photo")
-                        .foregroundColor(.secondary)
-                    Text("Image clip")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                if let image = resolveImage() {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxHeight: 140)
+                        .cornerRadius(6)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                        )
+                } else {
+                    HStack(spacing: 6) {
+                        Image(systemName: "photo")
+                            .foregroundColor(.secondary)
+                        Text(item.displayTitle)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
                 }
-                .padding(.vertical, 8)
+
+                if let text = item.plainText, !text.isEmpty {
+                    let filename = (text as NSString).lastPathComponent
+                    Text(filename)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                }
             }
 
-        case .webURL, .fileURL:
+        case .fileURL:
+            if let filePath = item.plainText, isImageFile(filePath), let image = NSImage(contentsOfFile: filePath) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxHeight: 140)
+                        .cornerRadius(6)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                        )
+
+                    Text((filePath as NSString).lastPathComponent)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.displayTitle)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+
+                    if let urlText = item.plainText {
+                        Text(urlText)
+                            .font(.system(size: 11))
+                            .foregroundColor(.accentColor)
+                            .lineLimit(2)
+                    }
+                }
+            }
+
+        case .webURL:
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.displayTitle)
                     .font(.system(size: 12, weight: .semibold))
@@ -141,6 +190,27 @@ public struct ClipboardCardView: View {
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private func resolveImage() -> NSImage? {
+        if let thumbPath = item.thumbnailRelativePath, let image = store.thumbnailImage(for: thumbPath) {
+            return image
+        }
+        if let imgPath = item.imageRelativePath, let image = store.fullImage(for: imgPath) {
+            return image
+        }
+        if let filePath = item.plainText, FileManager.default.fileExists(atPath: filePath) {
+            return NSImage(contentsOfFile: filePath)
+        }
+        return nil
+    }
+
+    private func isImageFile(_ path: String) -> Bool {
+        let ext = (path as NSString).pathExtension.lowercased()
+        let imageExtensions: Set<String> = [
+            "png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "tif", "bmp", "svg", "ico", "icns", "avif"
+        ]
+        return imageExtensions.contains(ext)
     }
 
     private var backgroundColor: Color {

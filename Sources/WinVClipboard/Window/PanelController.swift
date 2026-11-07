@@ -109,22 +109,27 @@ public final class PanelController: ObservableObject {
         installOutsideClickMonitors()
     }
 
-    public func hide() {
+    public func hide(immediately: Bool = false) {
         guard let panel = panel, panel.isVisible else { return }
         removeOutsideClickMonitors()
 
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.08
-            panel.animator().alphaValue = 0.0
-        }, completionHandler: {
+        if immediately {
+            panel.alphaValue = 0.0
             panel.orderOut(nil)
-        })
+        } else {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.08
+                panel.animator().alphaValue = 0.0
+            }, completionHandler: {
+                panel.orderOut(nil)
+            })
+        }
     }
 
     private func pasteItem(_ item: ClipboardItem) {
         let targetApp = previouslyActiveApp
         PasteInjector.shared.pasteItem(item, targetApp: targetApp) { [weak self] in
-            self?.hide()
+            self?.hide(immediately: true)
         }
     }
 
