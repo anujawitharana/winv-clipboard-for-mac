@@ -62,17 +62,14 @@ public final class PasteInjector: @unchecked Sendable {
         // 2. Dismiss panel callback
         onComplete?()
 
-        // 3. Activate target application
+        // 3. Deactivate self and restore original frontmost application
+        NSApp.deactivate()
         if let target = targetApp {
-            if #available(macOS 14.0, *) {
-                target.activate()
-            } else {
-                target.activate(options: .activateIgnoringOtherApps)
-            }
+            target.activate()
         }
 
-        // 4. Simulate Cmd + V after focus settle delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(45)) {
+        // 4. Simulate Cmd + V after focus settle delay (120ms ensures OS routes focus to target window)
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(120)) {
             if AXIsProcessTrusted() {
                 self.dispatchSyntheticPaste()
             } else {
@@ -82,7 +79,7 @@ public final class PasteInjector: @unchecked Sendable {
     }
 
     private func dispatchSyntheticPaste() {
-        let source = CGEventSource(stateID: .combinedSessionState)
+        guard let source = CGEventSource(stateID: .hidSystemState) else { return }
         let vKeyCode: CGKeyCode = 0x09 // ANSI 'V'
 
         guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: true),
@@ -91,10 +88,12 @@ public final class PasteInjector: @unchecked Sendable {
         }
 
         keyDown.flags = .maskCommand
-        keyUp.flags = .maskCommand
+        keyUp.flags = []
 
         keyDown.post(tap: .cghidEventTap)
-        keyUp.post(tap: .cghidEventTap)
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(15)) {
+            keyUp.post(tap: .cghidEventTap)
+        }
     }
 
     public static var isAccessibilityTrusted: Bool {

@@ -6,7 +6,6 @@ public struct ClipboardFlyoutView: View {
     public let onCloseRequested: () -> Void
 
     @ObservedObject private var store = ClipboardStore.shared
-    @State private var selectedIndex: Int = 0
     @FocusState private var isSearchFocused: Bool
 
     public init(onItemChosen: @escaping (ClipboardItem) -> Void, onCloseRequested: @escaping () -> Void) {
@@ -38,13 +37,13 @@ public struct ClipboardFlyoutView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: true) {
-                        LazyVStack(spacing: 6) {
-                            ForEach(Array(store.items.enumerated()), id: \.element.id) { index, item in
+                        VStack(spacing: 6) {
+                            ForEach(store.items) { item in
                                 ClipboardCardView(
                                     item: item,
-                                    isSelected: index == selectedIndex,
+                                    isSelected: store.selectedItem?.id == item.id,
                                     onSelect: {
-                                        selectedIndex = index
+                                        store.selectItem(item)
                                         onItemChosen(item)
                                     },
                                     onTogglePin: {
@@ -52,20 +51,19 @@ public struct ClipboardFlyoutView: View {
                                     },
                                     onDelete: {
                                         store.deleteItem(item)
-                                        if selectedIndex >= store.items.count - 1 && selectedIndex > 0 {
-                                            selectedIndex -= 1
-                                        }
                                     }
                                 )
-                                .id(index)
+                                .id(item.id)
                             }
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                     }
-                    .onChange(of: selectedIndex) { _, newIndex in
-                        withAnimation(.easeInOut(duration: 0.1)) {
-                            proxy.scrollTo(newIndex, anchor: .center)
+                    .onChange(of: store.selectedItem?.id) { _, newId in
+                        if let id = newId {
+                            withAnimation(.easeInOut(duration: 0.1)) {
+                                proxy.scrollTo(id, anchor: .center)
+                            }
                         }
                     }
                 }
@@ -76,6 +74,8 @@ public struct ClipboardFlyoutView: View {
 
             // Footer Status
             HStack(spacing: 8) {
+                Text("↑/↓ navigate")
+                Text("•")
                 Text("↵ to paste")
                 Text("•")
                 Text("⌫ to delete")
@@ -99,46 +99,11 @@ public struct ClipboardFlyoutView: View {
                 .stroke(Color.primary.opacity(0.12), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .onKeyPress(.downArrow) {
-            if selectedIndex < store.items.count - 1 {
-                selectedIndex += 1
-            }
-            return .handled
-        }
-        .onKeyPress(.upArrow) {
-            if selectedIndex > 0 {
-                selectedIndex -= 1
-            }
-            return .handled
-        }
-        .onKeyPress(.return) {
-            if store.items.indices.contains(selectedIndex) {
-                onItemChosen(store.items[selectedIndex])
-                return .handled
-            }
-            return .ignored
-        }
-        .onKeyPress(.delete) {
-            if !isSearchFocused && store.items.indices.contains(selectedIndex) {
-                let item = store.items[selectedIndex]
-                store.deleteItem(item)
-                if selectedIndex >= store.items.count - 1 && selectedIndex > 0 {
-                    selectedIndex -= 1
-                }
-                return .handled
-            }
-            return .ignored
-        }
-        .onKeyPress(KeyEquivalent("f"), phases: .down) { press in
-            if press.modifiers.contains(.command) {
-                isSearchFocused = true
-                return .handled
-            }
-            return .ignored
+        .onReceive(NotificationCenter.default.publisher(for: .focusClipboardSearch)) { _ in
+            isSearchFocused = true
         }
         .onAppear {
             store.refresh()
-            selectedIndex = 0
         }
     }
 }

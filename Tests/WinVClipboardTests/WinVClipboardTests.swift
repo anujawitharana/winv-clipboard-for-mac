@@ -180,4 +180,46 @@ final class WinVClipboardTests: XCTestCase {
         XCTAssertEqual(custom.displayString, "⇧⌘V")
         XCTAssertFalse(custom.isSystemReservedConflict)
     }
+
+    @MainActor
+    func testStoreKeyboardNavigationAndSelection() {
+        let store = ClipboardStore(dbManager: dbManager, fileManager: fileManager)
+
+        let item1 = ClipboardItem(id: UUID(), contentType: .text, plainText: "Item 1", timestamp: Date().addingTimeInterval(3), contentHash: "h1")
+        let item2 = ClipboardItem(id: UUID(), contentType: .text, plainText: "Item 2", timestamp: Date().addingTimeInterval(2), contentHash: "h2")
+        let item3 = ClipboardItem(id: UUID(), contentType: .text, plainText: "Item 3", timestamp: Date().addingTimeInterval(1), contentHash: "h3")
+
+        dbManager.insertOrUpdateItem(item1)
+        dbManager.insertOrUpdateItem(item2)
+        dbManager.insertOrUpdateItem(item3)
+
+        store.refreshSync()
+
+        XCTAssertEqual(store.items.count, 3)
+        XCTAssertEqual(store.selectedItemId, item1.id)
+
+        // Navigation down: item1 -> item2
+        store.selectNext()
+        XCTAssertEqual(store.selectedItemId, item2.id)
+
+        // Navigation down: item2 -> item3
+        store.selectNext()
+        XCTAssertEqual(store.selectedItemId, item3.id)
+
+        // Clamping at boundary
+        store.selectNext()
+        XCTAssertEqual(store.selectedItemId, item3.id)
+
+        // Navigation up: item3 -> item2
+        store.selectPrevious()
+        XCTAssertEqual(store.selectedItemId, item2.id)
+
+        // Navigation up: item2 -> item1
+        store.selectPrevious()
+        XCTAssertEqual(store.selectedItemId, item1.id)
+
+        // Clamping at top
+        store.selectPrevious()
+        XCTAssertEqual(store.selectedItemId, item1.id)
+    }
 }

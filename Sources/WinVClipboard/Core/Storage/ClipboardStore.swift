@@ -7,6 +7,7 @@ public final class ClipboardStore: ObservableObject {
     public static let shared = ClipboardStore()
 
     @Published public private(set) var items: [ClipboardItem] = []
+    @Published public var selectedItemId: UUID?
     @Published public var searchQuery: String = "" {
         didSet {
             refresh()
@@ -27,6 +28,48 @@ public final class ClipboardStore: ObservableObject {
         refresh()
     }
 
+    public var selectedItem: ClipboardItem? {
+        if let id = selectedItemId, let item = items.first(where: { $0.id == id }) {
+            return item
+        }
+        return items.first
+    }
+
+    public func selectNext() {
+        guard !items.isEmpty else { return }
+        if let currentId = selectedItem?.id, let idx = items.firstIndex(where: { $0.id == currentId }) {
+            let nextIdx = min(idx + 1, items.count - 1)
+            selectedItemId = items[nextIdx].id
+        } else {
+            selectedItemId = items.first?.id
+        }
+    }
+
+    public func selectPrevious() {
+        guard !items.isEmpty else { return }
+        if let currentId = selectedItem?.id, let idx = items.firstIndex(where: { $0.id == currentId }) {
+            let prevIdx = max(idx - 1, 0)
+            selectedItemId = items[prevIdx].id
+        } else {
+            selectedItemId = items.first?.id
+        }
+    }
+
+    public func selectItem(_ item: ClipboardItem) {
+        selectedItemId = item.id
+    }
+
+    public func refreshSync() {
+        let currentQuery = searchQuery
+        let fetched = dbManager.fetchItems(searchQuery: currentQuery.isEmpty ? nil : currentQuery, limit: 100)
+        self.items = fetched
+        if let currentId = self.selectedItemId, fetched.contains(where: { $0.id == currentId }) {
+            // Retain current selection
+        } else {
+            self.selectedItemId = fetched.first?.id
+        }
+    }
+
     public func refresh() {
         let currentQuery = searchQuery
         Task.detached(priority: .userInitiated) { [weak self, dbManager] in
@@ -34,6 +77,11 @@ public final class ClipboardStore: ObservableObject {
             let fetched = dbManager.fetchItems(searchQuery: currentQuery.isEmpty ? nil : currentQuery, limit: 100)
             await MainActor.run {
                 self.items = fetched
+                if let currentId = self.selectedItemId, fetched.contains(where: { $0.id == currentId }) {
+                    // Retain current selection
+                } else {
+                    self.selectedItemId = fetched.first?.id
+                }
             }
         }
     }
@@ -52,47 +100,51 @@ public final class ClipboardStore: ObservableObject {
         Task.detached(priority: .userInitiated) { [weak self, dbManager, fileManager] in
             guard let self = self else { return }
 
-            // Check if identical item already exists in DB
             if let existing = dbManager.findItemByHash(contentHash) {
                 // Update timestamp so it jumps to top
                 dbManager.updateTimestamp(id: existing.id, newTimestamp: Date())
-                await self.refresh()
-                return
+            } else {
+                var imgRelPath: String?
+                var thumbRelPath: String?
+
+                if let data = imageData {
+                    let paths = fileManager.saveImageData(data, contentHash: contentHash)
+                    imgRelPath = paths.imagePath
+                    thumbRelPath = paths.thumbnailPath
+                }
+
+                let newItem = ClipboardItem(
+                    id: UUID(),
+                    contentType: contentType,
+                    plainText: plainText,
+                    richContent: richContent,
+                    imageRelativePath: imgRelPath,
+                    thumbnailRelativePath: thumbRelPath,
+                    timestamp: Date(),
+                    sourceAppName: sourceAppName,
+                    sourceAppBundleId: sourceAppBundleId,
+                    isPinned: false,
+                    contentHash: contentHash,
+                    charCount: plainText?.count ?? 0
+                )
+
+                dbManager.insertOrUpdateItem(newItem)
+
+                // Prune unpinned beyond limit
+                let prunedPaths = dbManager.pruneUnpinned(keepMax: maxHistoryCount)
+                for pathPair in prunedPaths {
+                    fileManager.deleteFiles([pathPair.imagePath, pathPair.thumbPath])
+                }
             }
 
-            var imgRelPath: String?
-            var thumbRelPath: String?
+            // Immediately fetch freshest items in this background task
+            let currentQuery = await self.searchQuery
+            let fetched = dbManager.fetchItems(searchQuery: currentQuery.isEmpty ? nil : currentQuery, limit: 100)
 
-            if let data = imageData {
-                let paths = fileManager.saveImageData(data, contentHash: contentHash)
-                imgRelPath = paths.imagePath
-                thumbRelPath = paths.thumbnailPath
+            await MainActor.run {
+                self.items = fetched
+                self.selectedItemId = fetched.first?.id
             }
-
-            let newItem = ClipboardItem(
-                id: UUID(),
-                contentType: contentType,
-                plainText: plainText,
-                richContent: richContent,
-                imageRelativePath: imgRelPath,
-                thumbnailRelativePath: thumbRelPath,
-                timestamp: Date(),
-                sourceAppName: sourceAppName,
-                sourceAppBundleId: sourceAppBundleId,
-                isPinned: false,
-                contentHash: contentHash,
-                charCount: plainText?.count ?? 0
-            )
-
-            dbManager.insertOrUpdateItem(newItem)
-
-            // Prune unpinned beyond limit
-            let prunedPaths = dbManager.pruneUnpinned(keepMax: maxHistoryCount)
-            for pathPair in prunedPaths {
-                fileManager.deleteFiles([pathPair.imagePath, pathPair.thumbPath])
-            }
-
-            await self.refresh()
         }
     }
 

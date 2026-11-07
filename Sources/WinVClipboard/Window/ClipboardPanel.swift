@@ -3,11 +3,16 @@ import AppKit
 
 public final class ClipboardPanel: NSPanel {
     public var onEscapePressed: (() -> Void)?
+    public var onDownArrowPressed: (() -> Void)?
+    public var onUpArrowPressed: (() -> Void)?
+    public var onEnterPressed: (() -> Void)?
+    public var onDeletePressed: (() -> Void)?
+    public var onSearchShortcutPressed: (() -> Void)?
 
     public init(contentRect: NSRect) {
         super.init(
             contentRect: contentRect,
-            styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
+            styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -27,14 +32,48 @@ public final class ClipboardPanel: NSPanel {
     }
 
     public override var canBecomeMain: Bool {
-        return false
+        return true
     }
 
-    public override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { // Escape
-            onEscapePressed?()
-            return
+    public override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown {
+            let isEditingText: Bool
+            if let responder = firstResponder as? NSTextView {
+                isEditingText = responder.isFieldEditor
+            } else {
+                isEditingText = false
+            }
+
+            switch event.keyCode {
+            case 53: // Escape
+                onEscapePressed?()
+                return
+
+            case 125: // Down Arrow
+                onDownArrowPressed?()
+                return
+
+            case 126: // Up Arrow
+                onUpArrowPressed?()
+                return
+
+            case 36, 76: // Enter / Return
+                onEnterPressed?()
+                return
+
+            case 51: // Backspace / Delete
+                if !isEditingText {
+                    onDeletePressed?()
+                    return
+                }
+
+            default:
+                if event.keyCode == 3 && event.modifierFlags.contains(.command) { // Cmd + F
+                    onSearchShortcutPressed?()
+                    return
+                }
+            }
         }
-        super.keyDown(with: event)
+        super.sendEvent(event)
     }
 }

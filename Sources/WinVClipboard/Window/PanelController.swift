@@ -2,6 +2,10 @@ import Foundation
 import AppKit
 import SwiftUI
 
+extension Notification.Name {
+    public static let focusClipboardSearch = Notification.Name("com.winvclipboard.focusSearch")
+}
+
 @MainActor
 public final class PanelController: ObservableObject {
     public static let shared = PanelController()
@@ -38,6 +42,30 @@ public final class PanelController: ObservableObject {
         panel.onEscapePressed = { [weak self] in
             self?.hide()
         }
+
+        panel.onDownArrowPressed = {
+            ClipboardStore.shared.selectNext()
+        }
+
+        panel.onUpArrowPressed = {
+            ClipboardStore.shared.selectPrevious()
+        }
+
+        panel.onEnterPressed = { [weak self] in
+            if let item = ClipboardStore.shared.selectedItem {
+                self?.pasteItem(item)
+            }
+        }
+
+        panel.onDeletePressed = {
+            if let item = ClipboardStore.shared.selectedItem {
+                ClipboardStore.shared.deleteItem(item)
+            }
+        }
+
+        panel.onSearchShortcutPressed = {
+            NotificationCenter.default.post(name: .focusClipboardSearch, object: nil)
+        }
     }
 
     public var isVisible: Bool {
@@ -61,13 +89,17 @@ public final class PanelController: ObservableObject {
             self.previouslyActiveApp = currentFront
         }
 
+        // Always reload latest items from database upon opening
+        ClipboardStore.shared.refreshSync()
+
         // Calculate positioning
         let origin = CaretLocator.calculateFlyoutOrigin(panelSize: panelSize)
         panel.setFrameOrigin(origin)
 
         panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        NSRunningApplication.current.activate()
+        NSApp.activate()
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.12
