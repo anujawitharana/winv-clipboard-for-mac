@@ -9,10 +9,15 @@ public struct FlyoutHeaderView: View {
     public var body: some View {
         VStack(spacing: 8) {
             // Drag Handle Grip
-            Capsule()
-                .fill(Color.primary.opacity(0.2))
-                .frame(width: 36, height: 4)
-                .padding(.top, 2)
+            ZStack {
+                WindowDragHandle()
+                    .frame(height: 14)
+                Capsule()
+                    .fill(Color.primary.opacity(0.25))
+                    .frame(width: 40, height: 4)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 2)
 
             // Top Bar
             HStack(spacing: 8) {
@@ -59,6 +64,7 @@ public struct FlyoutHeaderView: View {
                 .buttonStyle(.plain)
                 .help("Preferences")
             }
+            .background(WindowDragHandle())
 
             // Search Bar
             HStack(spacing: 6) {

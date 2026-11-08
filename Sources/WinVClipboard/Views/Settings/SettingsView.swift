@@ -154,6 +154,25 @@ public struct SettingsView: View {
                             .foregroundColor(.green)
                     }
                 }
+
+                Section("Full Disk Access (Optional, Recommended)") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Seamless File & Image Copying Without Folder Prompts")
+                            .font(.system(size: 13, weight: .medium))
+
+                        Text("macOS asks for permission when reading files from Desktop, Downloads, or Documents. Granting Full Disk Access allows WinV Clipboard to preview and paste images copied from any folder without ever prompting you.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+
+                        Button("Open Full Disk Access Settings") {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
+                    .padding(.vertical, 4)
+                }
             }
             .formStyle(.grouped)
             .tabItem {

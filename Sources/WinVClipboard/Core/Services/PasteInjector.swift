@@ -29,6 +29,11 @@ public final class PasteInjector: @unchecked Sendable {
                 if let nsImage = NSImage(data: imgData), let tiff = nsImage.tiffRepresentation {
                     pasteboard.setData(tiff, forType: .tiff)
                 }
+            } else if let path = item.plainText, let fileImg = NSImage(contentsOfFile: path), let tiff = fileImg.tiffRepresentation {
+                if let rep = NSBitmapImageRep(data: tiff), let png = rep.representation(using: .png, properties: [:]) {
+                    pasteboard.setData(png, forType: .png)
+                }
+                pasteboard.setData(tiff, forType: .tiff)
             }
 
             // If this image originated from a local file, supply file URL

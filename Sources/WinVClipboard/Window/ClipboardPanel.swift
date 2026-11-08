@@ -36,6 +36,15 @@ public final class ClipboardPanel: NSPanel {
     }
 
     public override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDown {
+            let loc = event.locationInWindow
+            // Header drag zone: top 36 points, excluding top-right action buttons
+            if loc.y >= frame.height - 36 && loc.x < frame.width - 90 {
+                performDrag(with: event)
+                return
+            }
+        }
+
         if event.type == .keyDown {
             let isEditingText: Bool
             if let responder = firstResponder as? NSTextView {

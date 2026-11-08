@@ -150,7 +150,26 @@ public final class ClipboardMonitor: @unchecked Sendable {
             ]
 
             let isImg = imageExtensions.contains(ext)
-            let hash = sha256(string: "file:" + path)
+
+            var validImageData: Data? = nil
+            if isImg {
+                // Try reading real image data so the real photo preview is shown and pasted
+                if let data = try? Data(contentsOf: firstURL), !data.isEmpty, data.count <= 100 * 1024 * 1024 {
+                    validImageData = data
+                } else if let image = NSImage(contentsOf: firstURL),
+                          let tiff = image.tiffRepresentation,
+                          let rep = NSBitmapImageRep(data: tiff),
+                          let png = rep.representation(using: .png, properties: [:]) {
+                    validImageData = png
+                }
+            }
+
+            let hash: String
+            if let imgData = validImageData {
+                hash = sha256(data: imgData)
+            } else {
+                hash = sha256(string: "file:" + path)
+            }
 
             Task { @MainActor in
                 let maxCount = UserDefaults.standard.integer(forKey: "WinVMaxHistory")
@@ -158,7 +177,7 @@ public final class ClipboardMonitor: @unchecked Sendable {
                     contentType: isImg ? .image : .fileURL,
                     plainText: path,
                     richContent: nil,
-                    imageData: nil, // Avoid direct file read to prevent macOS folder permission popups
+                    imageData: validImageData,
                     sourceAppName: sourceAppName,
                     sourceAppBundleId: sourceBundleID,
                     contentHash: hash,

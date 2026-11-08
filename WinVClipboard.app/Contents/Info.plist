@@ -26,5 +26,11 @@
     <true/>
     <key>NSAppleEventsUsageDescription</key>
     <string>WinV Clipboard requires Accessibility access to simulate paste keystrokes into your target applications.</string>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>WinV Clipboard requires access to preview and paste images copied from your Desktop.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>WinV Clipboard requires access to preview and paste images copied from your Downloads folder.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>WinV Clipboard requires access to preview and paste images copied from your Documents folder.</string>
 </dict>
 </plist>
