@@ -70,6 +70,9 @@ public final class DatabaseManager: @unchecked Sendable {
                 sqlite3_free(errMsg)
             }
         }
+
+        // Clean up any corrupt generic icon captures from Finder where plain_text is NULL
+        sqlite3_exec(db, "DELETE FROM clipboard_items WHERE source_app_name = 'Finder' AND content_type = 'image' AND plain_text IS NULL;", nil, nil, nil)
     }
 
     public func executeTransaction<T>(_ block: () throws -> T) throws -> T {
@@ -357,6 +360,21 @@ public final class DatabaseManager: @unchecked Sendable {
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
                 sqlite3_bind_text(stmt, 1, (thumbnailPath as NSString).utf8String, -1, nil)
                 sqlite3_bind_text(stmt, 2, (id.uuidString as NSString).utf8String, -1, nil)
+                sqlite3_step(stmt)
+            }
+            sqlite3_finalize(stmt)
+        }
+    }
+
+    public func updateImageAndThumbnailPaths(id: UUID, imagePath: String, thumbPath: String) {
+        queue.sync {
+            guard let db = db else { return }
+            let sql = "UPDATE clipboard_items SET image_rel_path = ?, thumbnail_rel_path = ? WHERE id = ?;"
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+                sqlite3_bind_text(stmt, 1, (imagePath as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(stmt, 2, (thumbPath as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(stmt, 3, (id.uuidString as NSString).utf8String, -1, nil)
                 sqlite3_step(stmt)
             }
             sqlite3_finalize(stmt)

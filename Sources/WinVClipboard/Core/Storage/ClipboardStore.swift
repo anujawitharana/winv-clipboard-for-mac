@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import Combine
+import CommonCrypto
 
 @MainActor
 public final class ClipboardStore: ObservableObject {
@@ -103,6 +104,16 @@ public final class ClipboardStore: ObservableObject {
             if let existing = dbManager.findItemByHash(contentHash) {
                 // Update timestamp so it jumps to top
                 dbManager.updateTimestamp(id: existing.id, newTimestamp: Date())
+
+                // If existing item was missing image data/paths and we now have imageData, repair it
+                if (existing.contentType == .image),
+                   (existing.imageRelativePath == nil || existing.thumbnailRelativePath == nil),
+                   let data = imageData {
+                    let paths = fileManager.saveImageData(data, contentHash: contentHash)
+                    if let imgP = paths.imagePath, let thumbP = paths.thumbnailPath {
+                        dbManager.updateImageAndThumbnailPaths(id: existing.id, imagePath: imgP, thumbPath: thumbP)
+                    }
+                }
             } else {
                 var imgRelPath: String?
                 var thumbRelPath: String?
@@ -220,6 +231,56 @@ public final class ClipboardStore: ObservableObject {
         let url = fileManager.fullURL(for: relativePath)
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
         return NSImage(contentsOf: url)
+    }
+
+    public func upgradePendingImageItem(
+        contentHash: String,
+        filePath: String,
+        imageData: Data
+    ) {
+        Task.detached(priority: .userInitiated) { [weak self, dbManager, fileManager] in
+            guard let self = self else { return }
+            let paths = fileManager.saveImageData(imageData, contentHash: contentHash)
+            guard let imgP = paths.imagePath, let thumbP = paths.thumbnailPath else { return }
+
+            if let item = dbManager.findItemByHash(contentHash) {
+                dbManager.updateImageAndThumbnailPaths(id: item.id, imagePath: imgP, thumbPath: thumbP)
+            } else {
+                let items = dbManager.fetchItems(searchQuery: nil, limit: 100)
+                if let matching = items.first(where: { $0.plainText == filePath }) {
+                    dbManager.updateImageAndThumbnailPaths(id: matching.id, imagePath: imgP, thumbPath: thumbP)
+                }
+            }
+
+            let currentQuery = await self.searchQuery
+            let fetched = dbManager.fetchItems(searchQuery: currentQuery.isEmpty ? nil : currentQuery, limit: 100)
+            await MainActor.run {
+                self.items = fetched
+            }
+        }
+    }
+
+    public func repairImageFromDisk(itemId: UUID, filePath: String) async {
+        let db = dbManager
+        let fm = fileManager
+        Task.detached(priority: .background) { [weak self] in
+            guard let self = self else { return }
+            guard let fileData = try? Data(contentsOf: URL(fileURLWithPath: filePath)), !fileData.isEmpty else { return }
+            var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+            fileData.withUnsafeBytes {
+                _ = CC_SHA256($0.baseAddress, CC_LONG(fileData.count), &digest)
+            }
+            let hash = digest.map { String(format: "%02x", $0) }.joined()
+            let paths = fm.saveImageData(fileData, contentHash: hash)
+            if let imgP = paths.imagePath, let thumbP = paths.thumbnailPath {
+                db.updateImageAndThumbnailPaths(id: itemId, imagePath: imgP, thumbPath: thumbP)
+                let currentQuery = await self.searchQuery
+                let fetched = db.fetchItems(searchQuery: currentQuery.isEmpty ? nil : currentQuery, limit: 100)
+                await MainActor.run {
+                    self.items = fetched
+                }
+            }
+        }
     }
 
     public func fullImageData(for relativePath: String) -> Data? {

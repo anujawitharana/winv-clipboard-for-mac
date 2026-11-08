@@ -97,6 +97,45 @@ public final class FileStorageManager: @unchecked Sendable {
             return
         }
 
+        let ext = fileURL.pathExtension.lowercased()
+        let imageExtensions: Set<String> = [
+            "png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "tif", "bmp", "avif"
+        ]
+
+        if imageExtensions.contains(ext) {
+            // For image files, generate in-process downsampled thumbnail directly from image source
+            if let imageSource = CGImageSourceCreateWithURL(fileURL as CFURL, nil) {
+                let thumbnailOptions: [CFString: Any] = [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceShouldCacheImmediately: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceThumbnailMaxPixelSize: 300
+                ]
+                if let cgThumbnail = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, thumbnailOptions as CFDictionary) {
+                    let rep = NSBitmapImageRep(cgImage: cgThumbnail)
+                    if let pngData = rep.representation(using: .png, properties: [:]) {
+                        try? pngData.write(to: thumbnailFileUrl, options: .atomic)
+                        completion("thumbnails/\(thumbFilename)")
+                        return
+                    }
+                }
+            } else if let img = NSImage(contentsOf: fileURL),
+                      let tiff = img.tiffRepresentation,
+                      let rep = NSBitmapImageRep(data: tiff),
+                      let png = rep.representation(using: .png, properties: [:]) {
+                if let thumbData = generateThumbnailData(from: png, maxDimension: 300) {
+                    try? thumbData.write(to: thumbnailFileUrl, options: .atomic)
+                    completion("thumbnails/\(thumbFilename)")
+                    return
+                }
+            }
+
+            // Do NOT fall back to QLThumbnailGenerator icon for image files!
+            completion(nil)
+            return
+        }
+
+        // For non-image files (e.g. PDFs, documents), use QuickLook
         let size = CGSize(width: 300, height: 300)
         let request = QLThumbnailGenerator.Request(fileAt: fileURL, size: size, scale: 2.0, representationTypes: .thumbnail)
 

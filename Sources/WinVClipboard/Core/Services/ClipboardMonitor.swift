@@ -89,7 +89,75 @@ public final class ClipboardMonitor: @unchecked Sendable {
     private func processPasteboardData(sourceAppName: String?, sourceBundleID: String?) {
         guard let types = pasteboard.types, !types.isEmpty else { return }
 
-        // 1. Check for Direct Image content (PNG, TIFF, JPEG, HEIC, GIF, or NSImage)
+        // 1. Check for File URLs first (prevents NSImage.readObjects from turning Finder files into generic icons)
+        if types.contains(.fileURL),
+           let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
+           let firstURL = urls.first {
+            let path = firstURL.path
+            let ext = firstURL.pathExtension.lowercased()
+            let imageExtensions: Set<String> = [
+                "png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "tif", "bmp", "avif"
+            ]
+
+            let isImg = imageExtensions.contains(ext)
+            if isImg {
+                // Try reading real image bitmap data from disk
+                var validImageData: Data? = nil
+                if let data = try? Data(contentsOf: firstURL), !data.isEmpty, data.count <= 100 * 1024 * 1024 {
+                    validImageData = data
+                } else if let image = NSImage(contentsOf: firstURL),
+                          let tiff = image.tiffRepresentation,
+                          let rep = NSBitmapImageRep(data: tiff),
+                          let png = rep.representation(using: .png, properties: [:]) {
+                    validImageData = png
+                }
+
+                let hash: String
+                if let imgData = validImageData {
+                    hash = sha256(data: imgData)
+                } else {
+                    hash = sha256(string: "imgfile:" + path)
+                }
+
+                Task { @MainActor in
+                    let maxCount = UserDefaults.standard.integer(forKey: "WinVMaxHistory")
+                    ClipboardStore.shared.addOrUpdateItem(
+                        contentType: .image,
+                        plainText: path,
+                        richContent: nil,
+                        imageData: validImageData,
+                        sourceAppName: sourceAppName,
+                        sourceAppBundleId: sourceBundleID,
+                        contentHash: hash,
+                        maxHistoryCount: maxCount > 0 ? maxCount : 50
+                    )
+                }
+
+                // If initial read failed (e.g. waiting for TCC permission dialog), schedule retries
+                if validImageData == nil {
+                    self.scheduleImageFileRetries(fileURL: firstURL, path: path, hash: hash)
+                }
+                return
+            } else {
+                let hash = sha256(string: "file:" + path)
+                Task { @MainActor in
+                    let maxCount = UserDefaults.standard.integer(forKey: "WinVMaxHistory")
+                    ClipboardStore.shared.addOrUpdateItem(
+                        contentType: .fileURL,
+                        plainText: path,
+                        richContent: nil,
+                        imageData: nil,
+                        sourceAppName: sourceAppName,
+                        sourceAppBundleId: sourceBundleID,
+                        contentHash: hash,
+                        maxHistoryCount: maxCount > 0 ? maxCount : 50
+                    )
+                }
+                return
+            }
+        }
+
+        // 2. Check for Direct Image content on pasteboard (PNG, TIFF, JPEG, HEIC, GIF, or raw NSImage)
         let imageTypes: [NSPasteboard.PasteboardType] = [
             .png,
             .tiff,
@@ -113,7 +181,7 @@ public final class ClipboardMonitor: @unchecked Sendable {
             }
         }
 
-        // Also check if NSImage can read objects directly (e.g. from browsers, screenshots, Preview)
+        // Only check NSImage object reading if NOT a file URL (e.g. from browser "Copy Image", screenshots, Preview)
         if capturedImageData == nil,
            let images = pasteboard.readObjects(forClasses: [NSImage.self], options: nil) as? [NSImage],
            let firstImage = images.first,
@@ -132,52 +200,6 @@ public final class ClipboardMonitor: @unchecked Sendable {
                     plainText: nil,
                     richContent: nil,
                     imageData: finalData,
-                    sourceAppName: sourceAppName,
-                    sourceAppBundleId: sourceBundleID,
-                    contentHash: hash,
-                    maxHistoryCount: maxCount > 0 ? maxCount : 50
-                )
-            }
-            return
-        }
-
-        // 2. Check for File URLs
-        if types.contains(.fileURL), let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let firstURL = urls.first {
-            let path = firstURL.path
-            let ext = firstURL.pathExtension.lowercased()
-            let imageExtensions: Set<String> = [
-                "png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "tif", "bmp", "svg", "ico", "icns", "avif"
-            ]
-
-            let isImg = imageExtensions.contains(ext)
-
-            var validImageData: Data? = nil
-            if isImg {
-                // Try reading real image data so the real photo preview is shown and pasted
-                if let data = try? Data(contentsOf: firstURL), !data.isEmpty, data.count <= 100 * 1024 * 1024 {
-                    validImageData = data
-                } else if let image = NSImage(contentsOf: firstURL),
-                          let tiff = image.tiffRepresentation,
-                          let rep = NSBitmapImageRep(data: tiff),
-                          let png = rep.representation(using: .png, properties: [:]) {
-                    validImageData = png
-                }
-            }
-
-            let hash: String
-            if let imgData = validImageData {
-                hash = sha256(data: imgData)
-            } else {
-                hash = sha256(string: "file:" + path)
-            }
-
-            Task { @MainActor in
-                let maxCount = UserDefaults.standard.integer(forKey: "WinVMaxHistory")
-                ClipboardStore.shared.addOrUpdateItem(
-                    contentType: isImg ? .image : .fileURL,
-                    plainText: path,
-                    richContent: nil,
-                    imageData: validImageData,
                     sourceAppName: sourceAppName,
                     sourceAppBundleId: sourceBundleID,
                     contentHash: hash,
@@ -247,6 +269,25 @@ public final class ClipboardMonitor: @unchecked Sendable {
                     contentHash: hash,
                     maxHistoryCount: maxCount > 0 ? maxCount : 50
                 )
+            }
+        }
+    }
+
+    private func scheduleImageFileRetries(fileURL: URL, path: String, hash: String) {
+        let retryIntervals: [TimeInterval] = [0.4, 0.9, 1.8, 3.5, 6.0]
+        for interval in retryIntervals {
+            queue.asyncAfter(deadline: .now() + interval) { [weak self] in
+                guard self != nil else { return }
+                if let data = try? Data(contentsOf: fileURL), !data.isEmpty, data.count <= 100 * 1024 * 1024 {
+                    Task { @MainActor in
+                        ClipboardStore.shared.upgradePendingImageItem(
+                            contentHash: hash,
+                            filePath: path,
+                            imageData: data
+                        )
+                    }
+                    return
+                }
             }
         }
     }

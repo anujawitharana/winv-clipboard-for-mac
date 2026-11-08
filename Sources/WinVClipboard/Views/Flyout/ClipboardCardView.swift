@@ -201,6 +201,16 @@ public struct ClipboardCardView: View {
         if let imgPath = item.imageRelativePath, let image = store.fullImage(for: imgPath) {
             return image
         }
+        // Fallback: If image file exists on disk, load directly and schedule background caching
+        if let path = item.plainText, isImageFile(path), FileManager.default.fileExists(atPath: path) {
+            if let directImage = NSImage(contentsOfFile: path) {
+                let itemId = item.id
+                Task {
+                    await store.repairImageFromDisk(itemId: itemId, filePath: path)
+                }
+                return directImage
+            }
+        }
         return nil
     }
 

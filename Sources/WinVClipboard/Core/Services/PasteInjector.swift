@@ -29,15 +29,23 @@ public final class PasteInjector: @unchecked Sendable {
                 if let nsImage = NSImage(data: imgData), let tiff = nsImage.tiffRepresentation {
                     pasteboard.setData(tiff, forType: .tiff)
                 }
-            } else if let path = item.plainText, let fileImg = NSImage(contentsOfFile: path), let tiff = fileImg.tiffRepresentation {
-                if let rep = NSBitmapImageRep(data: tiff), let png = rep.representation(using: .png, properties: [:]) {
-                    pasteboard.setData(png, forType: .png)
+            } else if let path = item.plainText, FileManager.default.fileExists(atPath: path) {
+                if let data = try? Data(contentsOf: URL(fileURLWithPath: path)), !data.isEmpty {
+                    pasteboard.setData(data, forType: .png)
+                    if let img = NSImage(data: data), let tiff = img.tiffRepresentation {
+                        pasteboard.setData(tiff, forType: .tiff)
+                    }
+                } else if let fileImg = NSImage(contentsOfFile: path), let tiff = fileImg.tiffRepresentation {
+                    if let rep = NSBitmapImageRep(data: tiff), let png = rep.representation(using: .png, properties: [:]) {
+                        pasteboard.setData(png, forType: .png)
+                    }
+                    pasteboard.setData(tiff, forType: .tiff)
                 }
-                pasteboard.setData(tiff, forType: .tiff)
             }
 
-            // If this image originated from a local file, supply file URL
-            if let path = item.plainText, FileManager.default.fileExists(atPath: path) {
+            // Only supply file URL if target application is Finder (for file copying/moving in folders)
+            if targetApp?.bundleIdentifier == "com.apple.finder",
+               let path = item.plainText, FileManager.default.fileExists(atPath: path) {
                 let url = URL(fileURLWithPath: path)
                 pasteboard.writeObjects([url as NSURL])
             }

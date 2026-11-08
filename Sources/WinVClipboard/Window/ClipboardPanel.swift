@@ -35,14 +35,42 @@ public final class ClipboardPanel: NSPanel {
         return true
     }
 
+    private var isDraggingWindow: Bool = false
+    private var dragStartMouse: NSPoint = .zero
+    private var dragStartOrigin: NSPoint = .zero
+
     public override func sendEvent(_ event: NSEvent) {
-        if event.type == .leftMouseDown {
+        switch event.type {
+        case .leftMouseDown:
             let loc = event.locationInWindow
-            // Header drag zone: top 36 points, excluding top-right action buttons
-            if loc.y >= frame.height - 36 && loc.x < frame.width - 90 {
-                performDrag(with: event)
+            // Header drag zone: top 56 points, excluding top-right action buttons (Clear all, Settings)
+            if loc.y >= frame.height - 56 && loc.x < frame.width - 120 {
+                isDraggingWindow = true
+                dragStartMouse = NSEvent.mouseLocation
+                dragStartOrigin = self.frame.origin
                 return
             }
+
+        case .leftMouseDragged:
+            if isDraggingWindow {
+                let currentMouse = NSEvent.mouseLocation
+                let deltaX = currentMouse.x - dragStartMouse.x
+                let deltaY = currentMouse.y - dragStartMouse.y
+                self.setFrameOrigin(NSPoint(
+                    x: dragStartOrigin.x + deltaX,
+                    y: dragStartOrigin.y + deltaY
+                ))
+                return
+            }
+
+        case .leftMouseUp:
+            if isDraggingWindow {
+                isDraggingWindow = false
+                return
+            }
+
+        default:
+            break
         }
 
         if event.type == .keyDown {
