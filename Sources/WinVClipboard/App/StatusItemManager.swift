@@ -44,6 +44,10 @@ public final class StatusItemManager {
         prefsItem.target = self
         menu.addItem(prefsItem)
 
+        let aboutItem = NSMenuItem(title: "About WinV Clipboard", action: #selector(handleOpenAbout), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
+
         let isTrusted = PasteInjector.isAccessibilityTrusted
         let permItem = NSMenuItem(title: isTrusted ? "Accessibility: Active" : "Accessibility: Required (Click to Grant)", action: #selector(handleCheckPermissions), keyEquivalent: "")
         permItem.target = self
@@ -69,14 +73,18 @@ public final class StatusItemManager {
     }
 
     @objc private func handleOpenPreferences() {
-        SettingsWindowController.shared.show()
+        SettingsWindowController.shared.show(tab: .general)
+    }
+
+    @objc private func handleOpenAbout() {
+        SettingsWindowController.shared.show(tab: .about)
     }
 
     @objc private func handleCheckPermissions() {
         if !PasteInjector.isAccessibilityTrusted {
             PasteInjector.promptForAccessibility()
         }
-        SettingsWindowController.shared.show()
+        SettingsWindowController.shared.show(tab: .permissions)
     }
 
     @objc private func handleQuit() {

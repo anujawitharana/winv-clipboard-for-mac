@@ -1,8 +1,48 @@
+# macOS System & Finder
 .DS_Store
-/.build
-/Packages
-xcuserdata/
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+# Swift Package Manager & Build Artifacts
+/.build/
+/Packages/
 DerivedData/
-.swiftpm/configuration/registries.json
-.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+.swiftpm/
+
+# Application Bundles & Binaries
+WinVClipboard.app/
+*.app/
+*.dSYM/
+*.ipa
+*.pkg
+*.dmg
+
+# Local Databases, Caches & History
+*.db
+*.db-shm
+*.db-wal
+*.corrupt*
+*.sqlite
+*.sqlite3
+
+# Developer & Editor State
+.vscode/
+.idea/
+*.swp
+*~
+*.xcuserstate
+
+# Secrets & Credentials
+.env
+.env.*
 .netrc
+*.p12
+*.cer
+*.keychain
+*.mobileprovision
+*.provisionprofile

@@ -1,7 +1,9 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 public struct SettingsView: View {
+    @ObservedObject var controller: SettingsWindowController
     @AppStorage("WinVMaxHistory") private var maxHistory: Int = 50
     @AppStorage("WinVAutoExpireHours") private var autoExpireHours: Int = 0
     @AppStorage("WinVAppearanceMode") private var appearanceMode: String = "system"
@@ -9,10 +11,16 @@ public struct SettingsView: View {
     @State private var launchAtLogin: Bool = LaunchAtLoginService.isEnabled
     @State private var isAccessibilityTrusted: Bool = PasteInjector.isAccessibilityTrusted
 
-    public init() {}
+    public init(controller: SettingsWindowController) {
+        self.controller = controller
+    }
+
+    public init() {
+        self.controller = .shared
+    }
 
     public var body: some View {
-        TabView {
+        TabView(selection: $controller.selectedTab) {
             // General Tab
             Form {
                 Section("Global Shortcut") {
@@ -62,6 +70,7 @@ public struct SettingsView: View {
             .tabItem {
                 Label("General", systemImage: "gear")
             }
+            .tag(SettingsTab.general)
 
             // History & Storage Tab
             Form {
@@ -100,6 +109,7 @@ public struct SettingsView: View {
             .tabItem {
                 Label("Storage", systemImage: "internaldrive")
             }
+            .tag(SettingsTab.storage)
 
             // Privacy Tab
             VStack(alignment: .leading, spacing: 14) {
@@ -121,6 +131,7 @@ public struct SettingsView: View {
             .tabItem {
                 Label("Privacy", systemImage: "hand.raised")
             }
+            .tag(SettingsTab.privacy)
 
             // Permissions Tab
             Form {
@@ -178,8 +189,116 @@ public struct SettingsView: View {
             .tabItem {
                 Label("Permissions", systemImage: "lock.shield")
             }
+            .tag(SettingsTab.permissions)
+
+            // About Tab
+            VStack(spacing: 14) {
+                Spacer(minLength: 6)
+
+                // App Icon / Logo
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.blue, Color(red: 0.05, green: 0.6, blue: 0.95)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 68, height: 68)
+                        .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
+
+                    Image(systemName: "doc.on.clipboard.fill")
+                        .font(.system(size: 32, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+
+                VStack(spacing: 3) {
+                    Text("WinV Clipboard")
+                        .font(.system(size: 18, weight: .bold))
+
+                    Text("Version 1.0.0 (Build 1)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    Text("Native Windows 11 Clipboard (`Win + V`) for macOS")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        .padding(.top, 2)
+                }
+
+                Divider()
+                    .frame(maxWidth: 340)
+
+                VStack(spacing: 10) {
+                    HStack(spacing: 6) {
+                        Text("Created by")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        Text("Anuja Witharana")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
+
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            if let url = URL(string: "https://github.com/anujawitharana") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.crop.circle")
+                                Text("GitHub Profile")
+                            }
+                            .frame(minWidth: 125)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.regular)
+
+                        Button(action: {
+                            if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                Text("Repository")
+                            }
+                            .frame(minWidth: 125)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.regular)
+                    }
+
+                    Button(action: {
+                        if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac/issues") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "ladybug")
+                            Text("Report an Issue")
+                        }
+                        .font(.system(size: 11))
+                    }
+                    .buttonStyle(.link)
+                    .padding(.top, 2)
+                }
+
+                Spacer(minLength: 6)
+
+                Text("MIT License © 2026 Anuja Witharana. Free and Open Source.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.8))
+                    .padding(.bottom, 8)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .tabItem {
+                Label("About", systemImage: "info.circle")
+            }
+            .tag(SettingsTab.about)
         }
-        .frame(width: 520, height: 420)
+        .frame(width: 540, height: 440)
         .onAppear {
             isAccessibilityTrusted = PasteInjector.isAccessibilityTrusted
             launchAtLogin = LaunchAtLoginService.isEnabled

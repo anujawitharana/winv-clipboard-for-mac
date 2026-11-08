@@ -2,26 +2,38 @@ import Foundation
 import AppKit
 import SwiftUI
 
+public enum SettingsTab: String, CaseIterable, Identifiable {
+    case general
+    case storage
+    case privacy
+    case permissions
+    case about
+
+    public var id: String { rawValue }
+}
+
 @MainActor
-public final class SettingsWindowController {
+public final class SettingsWindowController: ObservableObject {
     public static let shared = SettingsWindowController()
 
+    @Published public var selectedTab: SettingsTab = .general
     private var window: NSWindow?
 
     private init() {}
 
-    public func show() {
+    public func show(tab: SettingsTab = .general) {
+        self.selectedTab = tab
         if let window = window {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
 
-        let settingsView = SettingsView()
+        let settingsView = SettingsView(controller: self)
         let hostingView = NSHostingView(rootView: settingsView)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 440),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false

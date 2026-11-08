@@ -1,27 +1,64 @@
 # WinV Clipboard for macOS
 
-**WinV Clipboard** is a native macOS clipboard manager that brings the fluid ergonomics and design of the **Windows 11 Clipboard History (`Win + V`)** directly to macOS.
+<p align="center">
+  <strong>The fluid, native Windows 11 Clipboard History experience (`Win + V`) brought to macOS.</strong>
+</p>
 
-Built with **Swift 5.10+**, **AppKit**, and **SwiftUI**, it runs as an ultra-lightweight menu-bar agent (`LSUIElement = true`) featuring a floating acrylic panel, caret-anchored positioning, instant auto-paste, and local privacy protection.
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-blue.svg" alt="Platform: macOS 14.0+">
+  <img src="https://img.shields.io/badge/swift-5.10%2B-orange.svg" alt="Swift 5.10+">
+  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT">
+  <img src="https://img.shields.io/badge/tests-15%20passing-brightgreen.svg" alt="Tests">
+</p>
+
+---
+
+## Introduction
+
+If you frequently switch between Windows and macOS, or simply miss the ergonomics of Windows 11's clipboard flyout (`Win + V`), **WinV Clipboard** provides the exact same workflow as a fast, native macOS utility.
+
+Built with **Swift**, **AppKit**, and **SwiftUI**, WinV Clipboard runs quietly in your menu bar (`LSUIElement = true`). When you invoke your hotkey, a translucent acrylic flyout appears right beside your cursor or active text caret, allowing you to search, pin, and paste previously copied clips with a single keystroke or click.
+
+---
+
+## Screenshots
+
+<p align="center">
+  <em>(Add screenshots here showcasing Light Mode, Dark Mode, and Preferences)</em>
+</p>
+
+```
++-----------------------------------------------------------+
+|  [Clipboard]                               [Clear all] [*]|
+|  [ Q Search clipboard...                                ]|
+|  +-----------------------------------------------------+  |
+|  | [A] TextEdit                      2m ago    [Pin] [X] |  |
+|  | Project architecture review and stability notes...  |  |
+|  +-----------------------------------------------------+  |
+|  | [o] Finder                        10m ago   [Pin] [X] |  |
+|  | +-------------------------------------------------+ |  |
+|  | | [High-Resolution Visual Photo Preview]          | |  |
+|  | +-------------------------------------------------+ |  |
+|  | Screenshot_2026-11-08.png                          |  |
+|  +-----------------------------------------------------+  |
+|  [Up/Down navigate  *  Enter to paste  *  Esc to close]   |
++-----------------------------------------------------------+
+```
 
 ---
 
 ## Key Features
 
-- **Windows 11 Fluent Acrylic Flyout**: Translucent `.ultraThinMaterial` floating card panel with rounded corners, subtle border, and native dark/light appearance.
-- **Smart Caret & Cursor Positioning**: Appears directly below the active text caret via Accessibility API; automatically falls back to the mouse cursor or screen center if caret inspection is unavailable.
-- **Direct Auto-Paste**: Selecting a clip or pressing `Enter` restores focus to the active target application and immediately simulates `⌘V` (Command + V).
-- **Configurable Global Shortcut**: Defaults to **`⌥V` (Option + V)**, matching the tactile feel of `Win + V` on a Mac keyboard. An interactive shortcut recorder in Settings allows you to configure any combination (e.g. `⌘⇧V`, `⌃⌥V`) with conflict detection.
-- **SQLite + Local Disk Storage**: Persistent history stored locally in `~/Library/Application Support/WinVClipboard/clipboard.db` (SQLite in WAL mode). Images and downsampled thumbnails are managed on the filesystem.
-- **Pinning & Pruning**: Pin important clips so they survive history limits and "Clear all". Unpinned clips are automatically pruned beyond your configured limit (default: 50 clips).
-- **Rich Media & Content Support**: Plain text, Rich Text (RTF), HTML snippets, Web URLs, File URLs, and PNG/TIFF images with instant preview thumbnails.
-- **Content Deduplication & Self-Suppression**: SHA-256 content hashing deduplicates repeated copies and brings existing items back to the top. Internal restoration operations are suppressed so pasting doesn't create duplicate history items.
-- **Privacy & Password Manager Protection**:
-  - Automatically detects concealed markers: `org.nspasteboard.ConcealedType`, `com.agilebits.onepassword`, `org.nspasteboard.TransientType`, `PasswordPboardType`.
-  - Built-in blacklisting of known password managers: 1Password, Bitwarden, Apple Keychain, KeePassXC, LastPass, Dashlane, Enpass, NordPass.
-  - Custom app exclusion blacklist table in Settings.
-  - One-click "Pause Monitoring" toggle.
-  - Zero telemetry or network transmission: 100% of data remains offline on your Mac.
+- **Windows 11 Acrylic Flyout**: Translucent `.ultraThinMaterial` card interface with native rounded corners, border accents, and dynamic Light/Dark mode support.
+- **Draggable Anywhere**: Move the flyout across your screens effortlessly by grabbing the top handle or header.
+- **Smart Caret & Cursor Positioning**: Anchors directly below the active text insertion caret using macOS Accessibility APIs; seamlessly falls back to the mouse cursor position or screen center.
+- **Direct Auto-Paste**: Clicking an item or pressing `Enter` restores focus to your active application and simulates `⌘V` (Command + V).
+- **Configurable Global Shortcut**: Defaults to **`⌥V` (Option + V)**. Features an in-app shortcut recorder with system conflict detection (e.g., preventing clashes with system `⌘C`/`⌘V`).
+- **High-Performance Storage (SQLite + Disk)**: Metadata and text are stored locally in an indexed SQLite database running in **WAL (Write-Ahead Logging)** mode. Binary images and downsampled thumbnails are managed on the filesystem.
+- **Asynchronous & Non-Blocking**: Zero main thread hitching during scrolling. Thumbnails and images decode asynchronously with an in-memory cache.
+- **Pinning & History Pruning**: Pin critical items so they survive "Clear all" and history size limits. Automatically prunes unpinned items beyond your configured threshold (default: 50 items).
+- **Rich Content Support**: Plain text, Rich Text (RTF), HTML snippets, Web URLs, File URLs, and visual bitmap images (PNG, JPEG, TIFF, HEIC, WebP).
+- **Privacy & Password Manager Protection**: Automatic detection of concealed types and built-in exclusion of major password managers.
 
 ---
 
@@ -29,120 +66,130 @@ Built with **Swift 5.10+**, **AppKit**, and **SwiftUI**, it runs as an ultra-lig
 
 | Shortcut | Action |
 | :--- | :--- |
-| **`⌥V`** (Option + V) | Open or dismiss the clipboard flyout (customizable in Settings) |
+| **`⌥V`** (Option + V) | Toggle the clipboard flyout (customizable in Preferences) |
 | **`↑` / `↓`** | Navigate through clipboard items |
-| **`↵`** (Enter / Return) | Paste selected item into the frontmost application |
-| **`⌫`** (Delete / Backspace) | Delete the selected clipboard item |
+| **`↵`** (Enter / Return) | Paste the selected item into the frontmost app |
+| **`⌫`** (Delete / Backspace) | Delete the selected item (when not editing search query) |
 | **`⌘F`** | Focus the search input field |
-| **`⎋`** (Escape) | Dismiss the clipboard flyout |
+| **`⎋`** (Escape) | Dismiss the flyout |
 
 ---
 
-## Architecture Overview
+## Technology Stack
 
-```
-WinVClipboard/
-├── Package.swift                    # Swift Package Manager configuration
-├── Resources/
-│   └── Info.plist                   # App bundle metadata (LSUIElement = 1)
-├── Scripts/
-│   └── build_app.sh                 # Release compilation & bundle script
-├── Sources/
-│   └── WinVClipboard/
-│       ├── main.swift               # Application entry point
-│       ├── App/
-│       │   ├── AppDelegate.swift    # App coordination & lifecycle
-│       │   └── StatusItemManager.swift # Menu bar tray icon & menu
-│       ├── Core/
-│       │   ├── Models/
-│       │   │   ├── ClipboardItem.swift # Data model with metadata & hashing
-│       │   │   ├── ContentType.swift   # Text, RTF, HTML, Image, File, URL
-│       │   │   └── KeyCombo.swift      # Carbon hotkey model & conflict detection
-│       │   ├── Storage/
-│       │   │   ├── DatabaseManager.swift # SQLite3 wrapper with WAL & transactions
-│       │   │   ├── FileStorageManager.swift # Binary image store & thumbnail generator
-│       │   │   └── ClipboardStore.swift # Primary data repository coordinator
-│       │   └── Services/
-│       │       ├── ClipboardMonitor.swift # Background NSPasteboard changeCount poller
-│       │       ├── PrivacyFilter.swift    # Concealed types & app exclusion engine
-│       │       ├── HotkeyManager.swift    # Carbon RegisterEventHotKey engine
-│       │       ├── CaretLocator.swift     # 3-tier positioning (AX Caret → Mouse → Center)
-│       │       ├── PasteInjector.swift    # CGEvent synthetic Cmd+V injector
-│       │       └── LaunchAtLoginService.swift # SMAppService login item manager
-│       ├── Window/
-│       │   ├── ClipboardPanel.swift   # Custom floating, acrylic NSPanel
-│       │   ├── PanelController.swift  # Window presenter & focus coordinator
-│       │   └── SettingsWindowController.swift # Preferences window coordinator
-│       └── Views/
-│           ├── Flyout/
-│           │   ├── ClipboardFlyoutView.swift # Windows 11 flyout interface
-│           │   ├── FlyoutHeaderView.swift    # Search bar & actions
-│           │   ├── ClipboardCardView.swift   # Individual clipboard card
-│           │   └── EmptyHistoryView.swift    # Empty state view
-│           ├── Settings/
-│           │   ├── SettingsView.swift        # Preferences tabs
-│           │   ├── ShortcutRecorderView.swift # Key recorder view
-│           │   └── ExclusionListView.swift   # Excluded apps manager
-│           └── Components/
-│               └── AcrylicBackground.swift   # NSVisualEffectView wrapper
-└── Tests/
-    └── WinVClipboardTests/          # Unit & integration test suite
-```
+* **Language**: Swift 5.10+
+* **UI Framework**: SwiftUI + AppKit (`NSPanel`, `NSHostingView`)
+* **Global Hotkeys**: Carbon Event Manager (`RegisterEventHotKey`, `InstallEventHandler`)
+* **Database**: SQLite3 C-API (WAL mode, transactions, `SQLITE_TRANSIENT` memory safety)
+* **Keystroke Simulation**: CoreGraphics Event Taps (`CGEvent`)
+* **Positioning**: macOS Accessibility API (`AXUIElement`) + CoreGraphics
+* **Login Management**: macOS ServiceManagement (`SMAppService`)
 
 ---
 
-## Build & Run Instructions
+## Requirements
 
-### Prerequisites
-- macOS 14.0 or newer
-- Xcode 15+ or Swift 5.10+ command-line tools
+* **Operating System**: macOS 14.0 (Sonoma) or newer.
+* **Architecture**: Apple Silicon (M1/M2/M3/M4) or Intel 64-bit.
 
-### Building the `.app` Bundle
-Run the packaging script from the project root:
+---
+
+## Installation & Build Instructions
+
+### Option 1: Download Release
+1. Download `WinVClipboard.app.zip` from the [Releases](https://github.com/anujawitharana/clipbaord-for-mac/releases) page.
+2. Unzip and drag `WinVClipboard.app` into your `/Applications` folder.
+3. Launch the application from Applications or Spotlight.
+
+### Option 2: Build from Source
+Ensure you have Xcode 15+ or the Swift command-line tools installed:
 
 ```bash
+# Clone the repository
+git clone https://github.com/anujawitharana/clipbaord-for-mac.git
+cd clipbaord-for-mac
+
+# Run automated tests
+swift test
+
+# Build and package the release application bundle
 ./Scripts/build_app.sh
 ```
 
-This compiles a release binary and generates a signed standalone app bundle: `WinVClipboard.app`.
-
-### Launching the Application
-Double-click `WinVClipboard.app` in Finder, or launch it from Terminal:
-
+The script compiles a production release binary and outputs a standalone, code-signed application bundle:
 ```bash
 open WinVClipboard.app
 ```
 
-The app will appear in your top macOS menu bar as a clipboard icon.
+---
 
-### Running Tests
-To run the automated test suite:
+## Accessibility & System Permissions
 
-```bash
-swift test
-```
+### 1. Accessibility (Required for Auto-Paste)
+When you select an item from the flyout, WinV Clipboard switches focus to your target application and synthesizes a `⌘V` keystroke. This requires macOS Accessibility access:
+1. Open **System Settings** → **Privacy & Security** → **Accessibility**.
+2. Toggle on **WinV Clipboard**.
+3. Alternatively, click the indicator under **WinV Preferences → Permissions** to open the system prompt directly.
+
+*Note: If Accessibility is not enabled, selecting an item copies it to your clipboard so you can paste manually.*
+
+### 2. Full Disk Access (Optional, Recommended)
+macOS Sonoma and Sequoia protect user folders (`Desktop`, `Downloads`, `Documents`) with Transparency, Consent, and Control (TCC). Granting Full Disk Access enables WinV Clipboard to preview and paste images copied from any folder without intermittent system permission prompts:
+* Open **System Settings** → **Privacy & Security** → **Full Disk Access**, and add **WinV Clipboard**.
 
 ---
 
-## Accessibility Permissions for Direct Auto-Paste
+## Privacy & Offline Storage Architecture
 
-When you click an item or press `Enter`, WinV Clipboard restores your previously active application and synthesizes `⌘V` using `CGEvent`.
+WinV Clipboard is built with a **strict offline-first, privacy-by-design** architecture:
 
-To enable this:
-1. Open **System Settings** $\to$ **Privacy & Security** $\to$ **Accessibility**.
-2. Enable **WinV Clipboard**.
-3. (Optional) You can also click the status indicator in **Preferences $\to$ Permissions** or the menu bar item to trigger the system prompt directly.
-
-*Note: If Accessibility permissions are not yet granted, selecting an item copies it to your clipboard with a reminder to grant permission, allowing manual `⌘V` paste.*
+* **Zero Network Calls**: WinV Clipboard contains no analytics, no telemetry, no crash-reporting SDKs, and no network dependencies.
+* **100% Local Storage**: All clipboard content remains on your Mac under:
+  ```
+  ~/Library/Application Support/WinVClipboard/
+  ├── clipboard.db          # SQLite database containing metadata and text
+  ├── images/               # High-resolution image content
+  └── thumbnails/           # 300px downsampled cache for instant rendering
+  ```
+* **Concealed Content Filtering**: Automatically detects and ignores sensitive pasteboard types:
+  * `org.nspasteboard.ConcealedType`
+  * `org.nspasteboard.AutoGeneratedType`
+  * `org.nspasteboard.TransientType`
+  * `com.agilebits.onepassword`
+  * `PasswordPboardType`
+  * `com.apple.findmy.clipboard`
+* **Default Password Manager Exclusions**: Clips copied from the following bundle identifiers are never captured:
+  * 1Password, Bitwarden, Apple Keychain Access, KeePassXC, LastPass, Dashlane, Enpass, NordPass.
+* **Custom Exclusion Blacklist**: Add any sensitive applications directly in Preferences.
+* **Pause Monitoring**: Toggle clipboard recording off at any time from the menu bar icon.
 
 ---
 
-## Storage Location
+## Known Limitations
 
-All application data is maintained locally under:
-```
-~/Library/Application Support/WinVClipboard/
-├── clipboard.db          # SQLite database with metadata & text
-├── images/               # Full-resolution cached images
-└── thumbnails/           # Downsampled fast-loading thumbnail cache
-```
+1. **Keyboard Layout Localization**: The global hotkey engine currently maps ANSI hardware keycodes. On non-QWERTY layouts (such as French AZERTY or German QWERTZ), `⌥V` maps to the physical key position rather than the localized character key.
+2. **Third-Party Caret Detection**: Certain cross-platform or custom-rendered text editors (such as Java Swing or older non-standard WebViews) do not publish `kAXSelectedTextRangeAttribute` via macOS Accessibility. WinV Clipboard automatically falls back to your mouse cursor position in these applications.
+
+---
+
+## Roadmap
+
+- [ ] Support localized keyboard layout translation via `TISCopyCurrentKeyboardInputSource` and `UCKeyTranslate`.
+- [ ] In-panel toast alerts when Accessibility permissions are pending.
+- [ ] SQLite Full-Text Search (FTS5) for faster indexing of large histories.
+- [ ] Export and import clipboard history (JSON / encrypted backup).
+- [ ] Custom sound effects and haptic feedback.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on code style, testing, and pull request procedures.
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2026 Anuja Witharana.
