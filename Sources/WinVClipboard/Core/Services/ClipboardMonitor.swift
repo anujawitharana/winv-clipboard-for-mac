@@ -4,6 +4,7 @@ import CommonCrypto
 
 public final class ClipboardMonitor: @unchecked Sendable {
     public static let shared = ClipboardMonitor()
+    public static let internalRestorationType = NSPasteboard.PasteboardType("com.winvclipboard.internal-restoration")
 
     private let pasteboard = NSPasteboard.general
     private var lastChangeCount: Int = -1
@@ -11,8 +12,11 @@ public final class ClipboardMonitor: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.winvclipboard.monitor", qos: .utility)
     private let lock = NSLock()
 
-    // Internal restoration lock to prevent recording our own paste restoration
+    // Internal restoration lock & change count tracking to prevent recording our own paste restoration
     private var _isInternalRestoration: Bool = false
+    private var expectedInternalChangeCount: Int = -1
+    private var pendingRetryWorkItems: [String: [DispatchWorkItem]] = [:]
+
     public var isInternalRestoration: Bool {
         get {
             lock.lock()
@@ -24,6 +28,12 @@ public final class ClipboardMonitor: @unchecked Sendable {
             defer { lock.unlock() }
             _isInternalRestoration = newValue
         }
+    }
+
+    public func markExpectedInternalChangeCount(_ count: Int) {
+        lock.lock()
+        defer { lock.unlock() }
+        self.expectedInternalChangeCount = count
     }
 
     public var pollingIntervalMs: Int = 250 {
@@ -45,6 +55,27 @@ public final class ClipboardMonitor: @unchecked Sendable {
             timer?.cancel()
             timer = nil
         }
+        cancelPendingRetries()
+    }
+
+    public func cancelPendingRetries(for path: String? = nil) {
+        lock.lock()
+        defer { lock.unlock() }
+        if let path = path {
+            pendingRetryWorkItems[path]?.forEach { $0.cancel() }
+            pendingRetryWorkItems.removeValue(forKey: path)
+        } else {
+            for (_, items) in pendingRetryWorkItems {
+                items.forEach { $0.cancel() }
+            }
+            pendingRetryWorkItems.removeAll()
+        }
+    }
+
+    public var pendingRetriesCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return pendingRetryWorkItems.count
     }
 
     private func restartTimer() {
@@ -66,9 +97,23 @@ public final class ClipboardMonitor: @unchecked Sendable {
         guard currentCount != lastChangeCount else { return }
         lastChangeCount = currentCount
 
-        // If this change was initiated by our own auto-paste restoration, skip it
-        if isInternalRestoration {
+        // 1. Check if pasteboard contains our own internal restoration marker
+        if let types = pasteboard.types, types.contains(ClipboardMonitor.internalRestorationType) {
             isInternalRestoration = false
+            return
+        }
+
+        // 2. Check if this changeCount matches our internal restoration count or flag
+        lock.lock()
+        let wasExpected = (currentCount == expectedInternalChangeCount)
+        if wasExpected {
+            expectedInternalChangeCount = -1
+        }
+        let wasInternal = _isInternalRestoration
+        _isInternalRestoration = false
+        lock.unlock()
+
+        if wasInternal || wasExpected {
             return
         }
 
@@ -274,11 +319,17 @@ public final class ClipboardMonitor: @unchecked Sendable {
     }
 
     private func scheduleImageFileRetries(fileURL: URL, path: String, hash: String) {
+        cancelPendingRetries(for: path)
+
         let retryIntervals: [TimeInterval] = [0.4, 0.9, 1.8, 3.5, 6.0]
+        var workItems: [DispatchWorkItem] = []
+
         for interval in retryIntervals {
-            queue.asyncAfter(deadline: .now() + interval) { [weak self] in
-                guard self != nil else { return }
+            var item: DispatchWorkItem!
+            item = DispatchWorkItem { [weak self, weak item] in
+                guard let self = self, let item = item, !item.isCancelled else { return }
                 if let data = try? Data(contentsOf: fileURL), !data.isEmpty, data.count <= 100 * 1024 * 1024 {
+                    self.cancelPendingRetries(for: path)
                     Task { @MainActor in
                         ClipboardStore.shared.upgradePendingImageItem(
                             contentHash: hash,
@@ -286,10 +337,15 @@ public final class ClipboardMonitor: @unchecked Sendable {
                             imageData: data
                         )
                     }
-                    return
                 }
             }
+            workItems.append(item)
+            queue.asyncAfter(deadline: .now() + interval, execute: item)
         }
+
+        lock.lock()
+        pendingRetryWorkItems[path] = workItems
+        lock.unlock()
     }
 
     private func sha256(data: Data) -> String {

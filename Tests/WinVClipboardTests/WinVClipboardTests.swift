@@ -259,4 +259,196 @@ final class WinVClipboardTests: XCTestCase {
         let thumb = fileManager.loadThumbnailImage(for: fetched.first!.thumbnailRelativePath!)
         XCTAssertNotNil(thumb)
     }
+
+    func testSQLiteTextBindingWithComplexAndTransientStrings() {
+        let specialText = """
+        🚀 Swift Concurrency & SQLite3:
+        Quotes: "Hello 'world'", `backticks`, \n Newline with \\ backslash.
+        SQL Injection string: '); DROP TABLE clipboard_items; --
+        Math: 2 + 2 = 4, ∑(x_i)
+        """
+
+        let item = ClipboardItem(
+            id: UUID(),
+            contentType: .text,
+            plainText: specialText,
+            richContent: "<b>Rich</b> content with 'quotes'",
+            sourceAppName: "Safari 🧭",
+            sourceAppBundleId: "com.apple.Safari",
+            contentHash: "special_hash"
+        )
+
+        dbManager.insertOrUpdateItem(item)
+
+        let fetched = dbManager.fetchItems(limit: 5)
+        XCTAssertEqual(fetched.count, 1)
+        XCTAssertEqual(fetched.first?.plainText, specialText)
+        XCTAssertEqual(fetched.first?.richContent, "<b>Rich</b> content with 'quotes'")
+        XCTAssertEqual(fetched.first?.sourceAppName, "Safari 🧭")
+    }
+
+    func testDatabaseRecoveryWithWALAndSHMCleanup() {
+        let dbPath = tempDirectory.appendingPathComponent("test_recovery.db").path
+        let manager = DatabaseManager(databasePath: dbPath)
+
+        let item = ClipboardItem(
+            id: UUID(),
+            contentType: .text,
+            plainText: "Pre-recovery item",
+            contentHash: "pre_hash"
+        )
+        manager.insertOrUpdateItem(item)
+
+        // Ensure WAL file is created by performing a write
+        let walPath = dbPath + "-wal"
+        let shmPath = dbPath + "-shm"
+        // Touch WAL/SHM if not yet flushed
+        if !FileManager.default.fileExists(atPath: walPath) {
+            FileManager.default.createFile(atPath: walPath, contents: Data("wal".utf8))
+        }
+        if !FileManager.default.fileExists(atPath: shmPath) {
+            FileManager.default.createFile(atPath: shmPath, contents: Data("shm".utf8))
+        }
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: dbPath))
+
+        // Trigger recovery
+        manager.recoverCorruptedDatabase()
+
+        // Database should be re-opened and clean
+        let fetched = manager.fetchItems(limit: 10)
+        XCTAssertEqual(fetched.count, 0) // New fresh database
+
+        // Can insert new items into the recovered database
+        let newItem = ClipboardItem(
+            id: UUID(),
+            contentType: .text,
+            plainText: "Post-recovery clip",
+            contentHash: "post_hash"
+        )
+        manager.insertOrUpdateItem(newItem)
+
+        let postFetched = manager.fetchItems(limit: 10)
+        XCTAssertEqual(postFetched.count, 1)
+        XCTAssertEqual(postFetched.first?.plainText, "Post-recovery clip")
+    }
+
+    func testDatabaseInsertUpdateDeleteLifecycle() {
+        let id = UUID()
+        let item = ClipboardItem(
+            id: id,
+            contentType: .text,
+            plainText: "Lifecycle item",
+            isPinned: false,
+            contentHash: "lifecycle_hash"
+        )
+
+        // 1. Insert
+        dbManager.insertOrUpdateItem(item)
+        var fetched = dbManager.findItemByHash("lifecycle_hash")
+        XCTAssertNotNil(fetched)
+        XCTAssertFalse(fetched!.isPinned)
+
+        // 2. Set pinned
+        dbManager.setPinned(id: id, isPinned: true)
+        fetched = dbManager.findItemByHash("lifecycle_hash")
+        XCTAssertTrue(fetched?.isPinned == true)
+
+        // 3. Update image and thumbnail paths
+        dbManager.updateImageAndThumbnailPaths(id: id, imagePath: "images/test.png", thumbPath: "thumbnails/test_thumb.png")
+        fetched = dbManager.findItemByHash("lifecycle_hash")
+        XCTAssertEqual(fetched?.imageRelativePath, "images/test.png")
+        XCTAssertEqual(fetched?.thumbnailRelativePath, "thumbnails/test_thumb.png")
+
+        // 4. Update timestamp
+        let futureDate = Date().addingTimeInterval(300)
+        dbManager.updateTimestamp(id: id, newTimestamp: futureDate)
+        fetched = dbManager.findItemByHash("lifecycle_hash")
+        XCTAssertEqual(Int(fetched!.timestamp.timeIntervalSince1970), Int(futureDate.timeIntervalSince1970))
+
+        // 5. Delete item
+        let paths = dbManager.deleteItem(id: id)
+        XCTAssertEqual(paths.imagePath, "images/test.png")
+        XCTAssertEqual(paths.thumbPath, "thumbnails/test_thumb.png")
+
+        let afterDelete = dbManager.findItemByHash("lifecycle_hash")
+        XCTAssertNil(afterDelete)
+    }
+
+    func testImageRetryCancellation() {
+        let monitor = ClipboardMonitor.shared
+
+        // Ensure retry queue starts clean
+        monitor.cancelPendingRetries()
+        XCTAssertEqual(monitor.pendingRetriesCount, 0)
+
+        // Calling cancel on nonexistent path does not crash
+        monitor.cancelPendingRetries(for: "/nonexistent/path.png")
+        XCTAssertEqual(monitor.pendingRetriesCount, 0)
+    }
+
+    func testClipboardDeduplicationAndTimestampBump() {
+        let hash = "dedup_hash_test"
+        let firstDate = Date().addingTimeInterval(-100)
+        let item1 = ClipboardItem(
+            id: UUID(),
+            contentType: .text,
+            plainText: "Repeated text",
+            timestamp: firstDate,
+            contentHash: hash
+        )
+        dbManager.insertOrUpdateItem(item1)
+
+        let initial = dbManager.fetchItems(limit: 5)
+        XCTAssertEqual(initial.count, 1)
+        XCTAssertEqual(Int(initial.first!.timestamp.timeIntervalSince1970), Int(firstDate.timeIntervalSince1970))
+
+        // Update timestamp for existing item
+        let newDate = Date()
+        dbManager.updateTimestamp(id: item1.id, newTimestamp: newDate)
+
+        let updated = dbManager.fetchItems(limit: 5)
+        XCTAssertEqual(updated.count, 1) // No duplicate row created
+        XCTAssertEqual(Int(updated.first!.timestamp.timeIntervalSince1970), Int(newDate.timeIntervalSince1970))
+    }
+
+    @MainActor
+    func testSelectionPreservationOnNewItems() {
+        let store = ClipboardStore(dbManager: dbManager, fileManager: fileManager)
+
+        let item1 = ClipboardItem(id: UUID(), contentType: .text, plainText: "Item 1", timestamp: Date().addingTimeInterval(3), contentHash: "h1")
+        let item2 = ClipboardItem(id: UUID(), contentType: .text, plainText: "Item 2", timestamp: Date().addingTimeInterval(2), contentHash: "h2")
+        let item3 = ClipboardItem(id: UUID(), contentType: .text, plainText: "Item 3", timestamp: Date().addingTimeInterval(1), contentHash: "h3")
+
+        dbManager.insertOrUpdateItem(item1)
+        dbManager.insertOrUpdateItem(item2)
+        dbManager.insertOrUpdateItem(item3)
+
+        store.refreshSync()
+        XCTAssertEqual(store.items.count, 3)
+
+        // User explicitly selects item 2
+        store.selectItem(item2)
+        XCTAssertEqual(store.selectedItemId, item2.id)
+
+        // A new item arrives
+        let newItem = ClipboardItem(id: UUID(), contentType: .text, plainText: "Item 4", timestamp: Date().addingTimeInterval(4), contentHash: "h4")
+        dbManager.insertOrUpdateItem(newItem)
+
+        store.refreshSync()
+        XCTAssertEqual(store.items.count, 4)
+        // Selection must be preserved!
+        XCTAssertEqual(store.selectedItemId, item2.id)
+    }
+
+    func testInternalClipboardRestorationMarker() {
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("com.test.pasteboard.internal.\(UUID().uuidString)"))
+        pasteboard.declareTypes([ClipboardMonitor.internalRestorationType, .string], owner: nil)
+        pasteboard.setString("Internal test clip", forType: .string)
+
+        let filter = PrivacyFilter()
+        // Must ignore internal restoration pasteboard writes
+        let shouldIgnore = filter.shouldIgnore(pasteboard: pasteboard, sourceBundleID: nil)
+        XCTAssertTrue(shouldIgnore)
+    }
 }

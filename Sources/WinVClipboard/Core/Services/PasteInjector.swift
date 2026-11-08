@@ -21,6 +21,7 @@ public final class PasteInjector: @unchecked Sendable {
 
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
+        pasteboard.setData(Data([1]), forType: ClipboardMonitor.internalRestorationType)
 
         switch item.contentType {
         case .image:
@@ -85,6 +86,8 @@ public final class PasteInjector: @unchecked Sendable {
                 pasteboard.setString(text, forType: .string)
             }
         }
+
+        ClipboardMonitor.shared.markExpectedInternalChangeCount(pasteboard.changeCount)
 
         // 2. Dismiss panel callback immediately
         onComplete?()

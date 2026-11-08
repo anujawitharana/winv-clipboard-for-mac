@@ -1,6 +1,8 @@
 import Foundation
 import SQLite3
 
+private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+
 public final class DatabaseManager: @unchecked Sendable {
     private var db: OpaquePointer?
     private let dbPath: String
@@ -15,11 +17,17 @@ public final class DatabaseManager: @unchecked Sendable {
     }
 
     deinit {
-        queue.sync {
-            if let db = db {
-                sqlite3_close_v2(db)
-            }
+        if let db = db {
+            sqlite3_close_v2(db)
         }
+    }
+
+    private func bindText(_ stmt: OpaquePointer?, index: Int32, text: String?) {
+        guard let text = text else {
+            sqlite3_bind_null(stmt, index)
+            return
+        }
+        sqlite3_bind_text(stmt, index, text, -1, SQLITE_TRANSIENT)
     }
 
     private func openDatabase() {
@@ -28,18 +36,47 @@ public final class DatabaseManager: @unchecked Sendable {
 
         let openFlags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
         if sqlite3_open_v2(dbPath, &db, openFlags, nil) != SQLITE_OK {
-            // Attempt to recover if database is corrupt
-            sqlite3_close_v2(db)
-            db = nil
-            let backupPath = dbPath + ".corrupt.\(Date().timeIntervalSince1970)"
-            try? FileManager.default.moveItem(atPath: dbPath, toPath: backupPath)
-            _ = sqlite3_open_v2(dbPath, &db, openFlags, nil)
+            recoverCorruptedDatabase(openFlags: openFlags)
+            return
         }
 
         // Configure WAL mode & synchronous normal for speed and safety
+        let walResult = sqlite3_exec(db, "PRAGMA journal_mode = WAL;", nil, nil, nil)
+        if walResult == SQLITE_CORRUPT || walResult == SQLITE_NOTADB {
+            recoverCorruptedDatabase(openFlags: openFlags)
+            return
+        }
+        sqlite3_exec(db, "PRAGMA synchronous = NORMAL;", nil, nil, nil)
+        sqlite3_exec(db, "PRAGMA foreign_keys = ON;", nil, nil, nil)
+    }
+
+    public func recoverCorruptedDatabase(openFlags: Int32 = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX) {
+        if let currentDb = db {
+            sqlite3_close_v2(currentDb)
+            db = nil
+        }
+
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let backupPrefix = dbPath + ".corrupt.\(timestamp)"
+
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: dbPath) {
+            try? fileManager.moveItem(atPath: dbPath, toPath: backupPrefix)
+        }
+        let walPath = dbPath + "-wal"
+        if fileManager.fileExists(atPath: walPath) {
+            try? fileManager.moveItem(atPath: walPath, toPath: backupPrefix + "-wal")
+        }
+        let shmPath = dbPath + "-shm"
+        if fileManager.fileExists(atPath: shmPath) {
+            try? fileManager.moveItem(atPath: shmPath, toPath: backupPrefix + "-shm")
+        }
+
+        _ = sqlite3_open_v2(dbPath, &db, openFlags, nil)
         sqlite3_exec(db, "PRAGMA journal_mode = WAL;", nil, nil, nil)
         sqlite3_exec(db, "PRAGMA synchronous = NORMAL;", nil, nil, nil)
         sqlite3_exec(db, "PRAGMA foreign_keys = ON;", nil, nil, nil)
+        setupSchema()
     }
 
     private func setupSchema() {
@@ -118,49 +155,17 @@ public final class DatabaseManager: @unchecked Sendable {
 
             var stmt: OpaquePointer?
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(stmt, 1, (item.id.uuidString as NSString).utf8String, -1, nil)
-                sqlite3_bind_text(stmt, 2, (item.contentType.rawValue as NSString).utf8String, -1, nil)
-
-                if let text = item.plainText {
-                    sqlite3_bind_text(stmt, 3, (text as NSString).utf8String, -1, nil)
-                } else {
-                    sqlite3_bind_null(stmt, 3)
-                }
-
-                if let rich = item.richContent {
-                    sqlite3_bind_text(stmt, 4, (rich as NSString).utf8String, -1, nil)
-                } else {
-                    sqlite3_bind_null(stmt, 4)
-                }
-
-                if let img = item.imageRelativePath {
-                    sqlite3_bind_text(stmt, 5, (img as NSString).utf8String, -1, nil)
-                } else {
-                    sqlite3_bind_null(stmt, 5)
-                }
-
-                if let thumb = item.thumbnailRelativePath {
-                    sqlite3_bind_text(stmt, 6, (thumb as NSString).utf8String, -1, nil)
-                } else {
-                    sqlite3_bind_null(stmt, 6)
-                }
-
+                bindText(stmt, index: 1, text: item.id.uuidString)
+                bindText(stmt, index: 2, text: item.contentType.rawValue)
+                bindText(stmt, index: 3, text: item.plainText)
+                bindText(stmt, index: 4, text: item.richContent)
+                bindText(stmt, index: 5, text: item.imageRelativePath)
+                bindText(stmt, index: 6, text: item.thumbnailRelativePath)
                 sqlite3_bind_double(stmt, 7, item.timestamp.timeIntervalSince1970)
-
-                if let appName = item.sourceAppName {
-                    sqlite3_bind_text(stmt, 8, (appName as NSString).utf8String, -1, nil)
-                } else {
-                    sqlite3_bind_null(stmt, 8)
-                }
-
-                if let bundleId = item.sourceAppBundleId {
-                    sqlite3_bind_text(stmt, 9, (bundleId as NSString).utf8String, -1, nil)
-                } else {
-                    sqlite3_bind_null(stmt, 9)
-                }
-
+                bindText(stmt, index: 8, text: item.sourceAppName)
+                bindText(stmt, index: 9, text: item.sourceAppBundleId)
                 sqlite3_bind_int(stmt, 10, item.isPinned ? 1 : 0)
-                sqlite3_bind_text(stmt, 11, (item.contentHash as NSString).utf8String, -1, nil)
+                bindText(stmt, index: 11, text: item.contentHash)
                 sqlite3_bind_int(stmt, 12, Int32(item.charCount))
 
                 sqlite3_step(stmt)
@@ -191,7 +196,7 @@ public final class DatabaseManager: @unchecked Sendable {
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
                 var bindIndex: Int32 = 1
                 for bind in binds {
-                    sqlite3_bind_text(stmt, bindIndex, (bind as NSString).utf8String, -1, nil)
+                    bindText(stmt, index: bindIndex, text: bind)
                     bindIndex += 1
                 }
                 sqlite3_bind_int(stmt, bindIndex, Int32(limit))
@@ -270,7 +275,7 @@ public final class DatabaseManager: @unchecked Sendable {
             var item: ClipboardItem?
 
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(stmt, 1, (hash as NSString).utf8String, -1, nil)
+                bindText(stmt, index: 1, text: hash)
                 if sqlite3_step(stmt) == SQLITE_ROW {
                     if let idStr = sqlite3_column_text(stmt, 0),
                        let typeStr = sqlite3_column_text(stmt, 1),
@@ -331,7 +336,7 @@ public final class DatabaseManager: @unchecked Sendable {
             var stmt: OpaquePointer?
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
                 sqlite3_bind_int(stmt, 1, isPinned ? 1 : 0)
-                sqlite3_bind_text(stmt, 2, (id.uuidString as NSString).utf8String, -1, nil)
+                bindText(stmt, index: 2, text: id.uuidString)
                 sqlite3_step(stmt)
             }
             sqlite3_finalize(stmt)
@@ -345,7 +350,7 @@ public final class DatabaseManager: @unchecked Sendable {
             var stmt: OpaquePointer?
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
                 sqlite3_bind_double(stmt, 1, newTimestamp.timeIntervalSince1970)
-                sqlite3_bind_text(stmt, 2, (id.uuidString as NSString).utf8String, -1, nil)
+                bindText(stmt, index: 2, text: id.uuidString)
                 sqlite3_step(stmt)
             }
             sqlite3_finalize(stmt)
@@ -358,8 +363,8 @@ public final class DatabaseManager: @unchecked Sendable {
             let sql = "UPDATE clipboard_items SET thumbnail_rel_path = ? WHERE id = ?;"
             var stmt: OpaquePointer?
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(stmt, 1, (thumbnailPath as NSString).utf8String, -1, nil)
-                sqlite3_bind_text(stmt, 2, (id.uuidString as NSString).utf8String, -1, nil)
+                bindText(stmt, index: 1, text: thumbnailPath)
+                bindText(stmt, index: 2, text: id.uuidString)
                 sqlite3_step(stmt)
             }
             sqlite3_finalize(stmt)
@@ -372,9 +377,9 @@ public final class DatabaseManager: @unchecked Sendable {
             let sql = "UPDATE clipboard_items SET image_rel_path = ?, thumbnail_rel_path = ? WHERE id = ?;"
             var stmt: OpaquePointer?
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(stmt, 1, (imagePath as NSString).utf8String, -1, nil)
-                sqlite3_bind_text(stmt, 2, (thumbPath as NSString).utf8String, -1, nil)
-                sqlite3_bind_text(stmt, 3, (id.uuidString as NSString).utf8String, -1, nil)
+                bindText(stmt, index: 1, text: imagePath)
+                bindText(stmt, index: 2, text: thumbPath)
+                bindText(stmt, index: 3, text: id.uuidString)
                 sqlite3_step(stmt)
             }
             sqlite3_finalize(stmt)
@@ -392,7 +397,7 @@ public final class DatabaseManager: @unchecked Sendable {
             let selectSQL = "SELECT image_rel_path, thumbnail_rel_path FROM clipboard_items WHERE id = ?;"
             var selectStmt: OpaquePointer?
             if sqlite3_prepare_v2(db, selectSQL, -1, &selectStmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(selectStmt, 1, (id.uuidString as NSString).utf8String, -1, nil)
+                bindText(selectStmt, index: 1, text: id.uuidString)
                 if sqlite3_step(selectStmt) == SQLITE_ROW {
                     if let img = sqlite3_column_text(selectStmt, 0) { imgRelPath = String(cString: img) }
                     if let thumb = sqlite3_column_text(selectStmt, 1) { thumbRelPath = String(cString: thumb) }
@@ -403,7 +408,7 @@ public final class DatabaseManager: @unchecked Sendable {
             let deleteSQL = "DELETE FROM clipboard_items WHERE id = ?;"
             var deleteStmt: OpaquePointer?
             if sqlite3_prepare_v2(db, deleteSQL, -1, &deleteStmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(deleteStmt, 1, (id.uuidString as NSString).utf8String, -1, nil)
+                bindText(deleteStmt, index: 1, text: id.uuidString)
                 sqlite3_step(deleteStmt)
             }
             sqlite3_finalize(deleteStmt)
@@ -475,7 +480,7 @@ public final class DatabaseManager: @unchecked Sendable {
                     let delSQL = "DELETE FROM clipboard_items WHERE id = ?;"
                     var delStmt: OpaquePointer?
                     if sqlite3_prepare_v2(db, delSQL, -1, &delStmt, nil) == SQLITE_OK {
-                        sqlite3_bind_text(delStmt, 1, (id as NSString).utf8String, -1, nil)
+                        bindText(delStmt, index: 1, text: id)
                         sqlite3_step(delStmt)
                     }
                     sqlite3_finalize(delStmt)

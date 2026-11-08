@@ -9,7 +9,18 @@ public struct ClipboardCardView: View {
     public let onDelete: () -> Void
 
     @State private var isHovered: Bool = false
+    @State private var asyncImage: NSImage? = nil
     @ObservedObject private var store = ClipboardStore.shared
+
+    private var previewImage: NSImage? {
+        if let asyncImage = asyncImage {
+            return asyncImage
+        }
+        if let thumbPath = item.thumbnailRelativePath, let cached = store.cachedThumbnail(for: thumbPath) {
+            return cached
+        }
+        return nil
+    }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -94,6 +105,9 @@ public struct ClipboardCardView: View {
                 NSCursor.pop()
             }
         }
+        .task(id: item.id) {
+            await loadCardImageAsync()
+        }
     }
 
     @ViewBuilder
@@ -101,7 +115,7 @@ public struct ClipboardCardView: View {
         switch item.contentType {
         case .image:
             VStack(alignment: .leading, spacing: 4) {
-                if let image = resolveImage() {
+                if let image = previewImage {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
@@ -132,7 +146,7 @@ public struct ClipboardCardView: View {
             }
 
         case .fileURL:
-            if let thumbPath = item.thumbnailRelativePath, let image = store.thumbnailImage(for: thumbPath) {
+            if let image = previewImage {
                 VStack(alignment: .leading, spacing: 4) {
                     Image(nsImage: image)
                         .resizable()
@@ -194,24 +208,45 @@ public struct ClipboardCardView: View {
         }
     }
 
-    private func resolveImage() -> NSImage? {
-        if let thumbPath = item.thumbnailRelativePath, let image = store.thumbnailImage(for: thumbPath) {
-            return image
+    private func loadCardImageAsync() async {
+        guard item.contentType == .image || item.contentType == .fileURL else { return }
+
+        // If already cached in memory, set immediately
+        if let thumbPath = item.thumbnailRelativePath, let cached = store.cachedThumbnail(for: thumbPath) {
+            self.asyncImage = cached
+            return
         }
-        if let imgPath = item.imageRelativePath, let image = store.fullImage(for: imgPath) {
-            return image
-        }
-        // Fallback: If image file exists on disk, load directly and schedule background caching
-        if let path = item.plainText, isImageFile(path), FileManager.default.fileExists(atPath: path) {
-            if let directImage = NSImage(contentsOfFile: path) {
-                let itemId = item.id
+
+        let currentItem = self.item
+        let loaded = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+            let fm = FileStorageManager()
+            if let thumbPath = currentItem.thumbnailRelativePath,
+               let img = fm.loadThumbnailImage(for: thumbPath) {
+                return img
+            }
+            if let imgPath = currentItem.imageRelativePath {
+                let url = fm.fullURL(for: imgPath)
+                if FileManager.default.fileExists(atPath: url.path), let img = NSImage(contentsOf: url) {
+                    return img
+                }
+            }
+            if let path = currentItem.plainText,
+               FileManager.default.fileExists(atPath: path),
+               let directImage = NSImage(contentsOfFile: path) {
                 Task {
-                    await store.repairImageFromDisk(itemId: itemId, filePath: path)
+                    await ClipboardStore.shared.repairImageFromDisk(itemId: currentItem.id, filePath: path)
                 }
                 return directImage
             }
+            return nil
+        }.value
+
+        if let loaded = loaded {
+            self.asyncImage = loaded
+            if let thumbPath = currentItem.thumbnailRelativePath {
+                _ = store.thumbnailImage(for: thumbPath)
+            }
         }
-        return nil
     }
 
     private func isImageFile(_ path: String) -> Bool {

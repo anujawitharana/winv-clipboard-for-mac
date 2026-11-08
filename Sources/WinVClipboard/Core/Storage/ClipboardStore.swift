@@ -19,6 +19,7 @@ public final class ClipboardStore: ObservableObject {
     private let fileManager: FileStorageManager
     private let thumbnailCache = NSCache<NSString, NSImage>()
     private var cancellables = Set<AnyCancellable>()
+    private var activeRepairItemIds = Set<UUID>()
 
     public init(dbManager: DatabaseManager? = nil, fileManager: FileStorageManager? = nil) {
         let fManager = fileManager ?? FileStorageManager()
@@ -168,7 +169,11 @@ public final class ClipboardStore: ObservableObject {
 
             await MainActor.run {
                 self.items = fetched
-                self.selectedItemId = fetched.first?.id
+                if let currentId = self.selectedItemId, fetched.contains(where: { $0.id == currentId }) {
+                    // Retain current selection
+                } else {
+                    self.selectedItemId = fetched.first?.id
+                }
             }
         }
     }
@@ -215,6 +220,11 @@ public final class ClipboardStore: ObservableObject {
         }
     }
 
+    public func cachedThumbnail(for relativePath: String) -> NSImage? {
+        let key = relativePath as NSString
+        return thumbnailCache.object(forKey: key)
+    }
+
     public func thumbnailImage(for relativePath: String) -> NSImage? {
         let key = relativePath as NSString
         if let cached = thumbnailCache.object(forKey: key) {
@@ -256,14 +266,27 @@ public final class ClipboardStore: ObservableObject {
             let fetched = dbManager.fetchItems(searchQuery: currentQuery.isEmpty ? nil : currentQuery, limit: 100)
             await MainActor.run {
                 self.items = fetched
+                if let currentId = self.selectedItemId, fetched.contains(where: { $0.id == currentId }) {
+                    // Retain current selection
+                } else {
+                    self.selectedItemId = fetched.first?.id
+                }
             }
         }
     }
 
     public func repairImageFromDisk(itemId: UUID, filePath: String) async {
+        guard !activeRepairItemIds.contains(itemId) else { return }
+        activeRepairItemIds.insert(itemId)
+
         let db = dbManager
         let fm = fileManager
         Task.detached(priority: .background) { [weak self] in
+            defer {
+                Task { @MainActor [weak self] in
+                    self?.activeRepairItemIds.remove(itemId)
+                }
+            }
             guard let self = self else { return }
             guard let fileData = try? Data(contentsOf: URL(fileURLWithPath: filePath)), !fileData.isEmpty else { return }
             var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
@@ -278,6 +301,11 @@ public final class ClipboardStore: ObservableObject {
                 let fetched = db.fetchItems(searchQuery: currentQuery.isEmpty ? nil : currentQuery, limit: 100)
                 await MainActor.run {
                     self.items = fetched
+                    if let currentId = self.selectedItemId, fetched.contains(where: { $0.id == currentId }) {
+                        // Retain current selection
+                    } else {
+                        self.selectedItemId = fetched.first?.id
+                    }
                 }
             }
         }

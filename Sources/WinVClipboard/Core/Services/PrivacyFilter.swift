@@ -79,8 +79,11 @@ public final class PrivacyFilter: @unchecked Sendable {
             return true
         }
 
-        // 1. Check for Concealed or Password types
+        // 1. Check for Concealed or Password types, or WinV internal restoration
         if let types = pasteboard.types {
+            if types.contains(ClipboardMonitor.internalRestorationType) {
+                return true
+            }
             for type in types {
                 for concealed in PrivacyFilter.concealedPasteboardTypes {
                     if type == concealed || type.rawValue.contains("ConcealedType") || type.rawValue.contains("Password") {
