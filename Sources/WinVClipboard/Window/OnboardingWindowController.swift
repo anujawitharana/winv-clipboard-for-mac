@@ -28,8 +28,7 @@ public final class OnboardingWindowController: NSObject, ObservableObject, NSWin
                 PanelController.shared.toggle()
             })
             window.contentView = NSHostingView(rootView: onboardingView)
-            window.level = .floating
-            window.orderFrontRegardless()
+            window.level = .normal
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
@@ -55,11 +54,10 @@ public final class OnboardingWindowController: NSObject, ObservableObject, NSWin
         window.contentView = hostingView
         window.isReleasedWhenClosed = false
         window.isMovableByWindowBackground = true
-        window.level = .floating
+        window.level = .normal
         window.delegate = self
 
         self.window = window
-        window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
