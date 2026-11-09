@@ -10,14 +10,24 @@ public final class OnboardingWindowController: ObservableObject {
 
     private init() {}
 
-    public func show() {
+    public func show(initialStep: Int? = nil) {
+        if let step = initialStep {
+            UserDefaults.standard.set(step, forKey: "WinVOnboardingCurrentStep")
+        }
+
         if let window = window {
+            let onboardingView = OnboardingView(initialStep: initialStep, onComplete: { [weak self] in
+                self?.close()
+                // Open the flyout immediately for the user to try out!
+                PanelController.shared.toggle()
+            })
+            window.contentView = NSHostingView(rootView: onboardingView)
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
 
-        let onboardingView = OnboardingView(onComplete: { [weak self] in
+        let onboardingView = OnboardingView(initialStep: initialStep, onComplete: { [weak self] in
             self?.close()
             // Open the flyout immediately for the user to try out!
             PanelController.shared.toggle()

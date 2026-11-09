@@ -5,7 +5,7 @@ import Combine
 public struct OnboardingView: View {
     public let onComplete: () -> Void
 
-    @State private var currentStep: Int = 1
+    @State private var currentStep: Int
     @State private var isAccessibilityGranted: Bool = PasteInjector.isAccessibilityTrusted
     @State private var isFullDiskAccessGranted: Bool = PasteInjector.isFullDiskAccessGranted
     @State private var launchAtLogin: Bool = LaunchAtLoginService.isEnabled
@@ -13,8 +13,16 @@ public struct OnboardingView: View {
 
     private let timer = Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()
 
-    public init(onComplete: @escaping () -> Void) {
+    public init(initialStep: Int? = nil, onComplete: @escaping () -> Void) {
         self.onComplete = onComplete
+        let step: Int
+        if let explicit = initialStep, explicit >= 1 && explicit <= 3 {
+            step = explicit
+        } else {
+            let saved = UserDefaults.standard.integer(forKey: "WinVOnboardingCurrentStep")
+            step = (saved >= 1 && saved <= 3) ? saved : 1
+        }
+        _currentStep = State(initialValue: step)
     }
 
     public var body: some View {
@@ -106,7 +114,14 @@ public struct OnboardingView: View {
                 isFullDiskAccessGranted = PasteInjector.isFullDiskAccessGranted
             }
         }
+        .onChange(of: currentStep) { _, newStep in
+            UserDefaults.standard.set(newStep, forKey: "WinVOnboardingCurrentStep")
+        }
         .onAppear {
+            let saved = UserDefaults.standard.integer(forKey: "WinVOnboardingCurrentStep")
+            if saved >= 1 && saved <= 3 {
+                currentStep = saved
+            }
             isAccessibilityGranted = PasteInjector.isAccessibilityTrusted
             isFullDiskAccessGranted = PasteInjector.isFullDiskAccessGranted
             launchAtLogin = LaunchAtLoginService.isEnabled
@@ -286,18 +301,32 @@ public struct OnboardingView: View {
                 }
 
                 if !isFullDiskAccessGranted {
-                    Button(action: {
-                        PasteInjector.promptForFullDiskAccess()
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "folder.badge.gearshape")
-                            Text("Open Full Disk Access Settings")
+                    VStack(alignment: .leading, spacing: 8) {
+                        Button(action: {
+                            PasteInjector.promptForFullDiskAccess()
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "folder.badge.gearshape")
+                                Text("Open Full Disk Access Settings")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 5)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 5)
+                        .buttonStyle(.bordered)
+                        .controlSize(.regular)
+
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.secondary)
+                                .font(.system(size: 11))
+                                .padding(.top, 1)
+
+                            Text("When enabled, macOS asks to \"Quit & Reopen\". You can click **Later** to finish setup now, or click **Quit & Reopen** and WinV Clipboard will resume right here.")
+                                .font(.system(size: 10.5))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.regular)
                 }
             }
             .padding(12)
@@ -423,6 +452,7 @@ public struct OnboardingView: View {
     }
 
     private func finishOnboarding() {
+        UserDefaults.standard.removeObject(forKey: "WinVOnboardingCurrentStep")
         UserDefaults.standard.set(true, forKey: "WinVHasCompletedOnboarding")
         onComplete()
     }
