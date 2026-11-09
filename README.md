@@ -13,6 +13,16 @@
   <a href="https://github.com/anujawitharana/clipbaord-for-mac/stargazers"><img src="https://img.shields.io/github/stars/anujawitharana/clipbaord-for-mac?style=social" alt="GitHub Stars"></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/anujawitharana/clipbaord-for-mac">
+    <img src="https://img.shields.io/badge/%E2%AD%90%20Star%20this%20Repo-on%20GitHub-yellow?style=for-the-badge&logo=github" alt="Star this Repo on GitHub">
+  </a>
+</p>
+
+<p align="center">
+  <sub>⭐️ <strong>Enjoying WinV Clipboard?</strong> Please <a href="https://github.com/anujawitharana/clipbaord-for-mac"><strong>star the repository</strong></a> to support future updates and help other Mac users discover it! ⭐️</sub>
+</p>
+
 ---
 
 ## Introduction

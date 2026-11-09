@@ -270,6 +270,24 @@ public struct SettingsView: View {
                     // Links Row
                     HStack(spacing: 12) {
                         Button(action: {
+                            if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.fill")
+                                    .foregroundColor(.yellow)
+                                Text("Star on GitHub")
+                            }
+                            .font(.system(size: 11))
+                        }
+                        .buttonStyle(.link)
+
+                        Text("•")
+                            .foregroundColor(.secondary.opacity(0.4))
+                            .font(.system(size: 11))
+
+                        Button(action: {
                             if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac/issues") {
                                 NSWorkspace.shared.open(url)
                             }
