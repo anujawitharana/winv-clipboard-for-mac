@@ -5,6 +5,7 @@ import AppKit
 public struct SettingsView: View {
     @ObservedObject var controller: SettingsWindowController
     @ObservedObject private var updateManager = UpdateManager.shared
+    @AppStorage("WinVAutoCheckUpdates") private var isAutoCheckEnabled: Bool = true
     @AppStorage("WinVMaxHistory") private var maxHistory: Int = 50
     @AppStorage("WinVAutoExpireHours") private var autoExpireHours: Int = 0
     @AppStorage("WinVAppearanceMode") private var appearanceMode: String = "system"
@@ -418,10 +419,13 @@ public struct SettingsView: View {
                         }
                     }
 
-                    Toggle("Automatically check for updates on startup", isOn: $updateManager.isAutoCheckEnabled)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                    Toggle("Automatically check for updates on startup", isOn: $isAutoCheckEnabled)
+                        .font(.system(size: 11))
+                        .foregroundColor(.primary)
                         .toggleStyle(.checkbox)
+                        .onChange(of: isAutoCheckEnabled) { _, newValue in
+                            updateManager.isAutoCheckEnabled = newValue
+                        }
                 }
 
                 Spacer(minLength: 6)

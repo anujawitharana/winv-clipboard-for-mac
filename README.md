@@ -25,26 +25,30 @@ Built with **Swift**, **AppKit**, and **SwiftUI**, WinV Clipboard runs quietly i
 ## Screenshots
 
 <p align="center">
-  <em>(Add screenshots here showcasing Light Mode, Dark Mode, and Preferences)</em>
+  <img src="assets/screenshots/clipboard-desktop.png" width="780" alt="WinV Clipboard on macOS Desktop">
 </p>
 
-```
-+-----------------------------------------------------------+
-|  [Clipboard]                               [Clear all] [*]|
-|  [ Q Search clipboard...                                ]|
-|  +-----------------------------------------------------+  |
-|  | [A] TextEdit                      2m ago    [Pin] [X] |  |
-|  | Project architecture review and stability notes...  |  |
-|  +-----------------------------------------------------+  |
-|  | [o] Finder                        10m ago   [Pin] [X] |  |
-|  | +-------------------------------------------------+ |  |
-|  | | [High-Resolution Visual Photo Preview]          | |  |
-|  | +-------------------------------------------------+ |  |
-|  | Screenshot_2026-11-08.png                          |  |
-|  +-----------------------------------------------------+  |
-|  [Up/Down navigate  *  Enter to paste  *  Esc to close]   |
-+-----------------------------------------------------------+
-```
+### Clipboard Flyout & Menu Bar Tray
+
+<p align="center">
+  <img src="assets/screenshots/clipboard-flyout.png" width="360" alt="WinV Clipboard Flyout">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/screenshots/menubar-menu.png" width="360" alt="Menu Bar Dropdown">
+</p>
+
+### Settings & Preferences
+
+<p align="center">
+  <img src="assets/screenshots/settings-about.png" width="360" alt="About and Update Manager">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/screenshots/settings-general.png" width="360" alt="General Settings & Hotkey Recorder">
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/settings-privacy.png" width="360" alt="Privacy & Password Manager Exclusions">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/screenshots/settings-permissions.png" width="360" alt="System Permissions & Security">
+</p>
 
 ---
 

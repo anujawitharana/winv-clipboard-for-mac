@@ -5,6 +5,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var expireTimer: Timer?
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        // Register default settings
+        UserDefaults.standard.register(defaults: [
+            "WinVAutoCheckUpdates": true,
+            "WinVMaxHistory": 50,
+            "WinVAutoExpireHours": 0,
+            "WinVAppearanceMode": "system"
+        ])
+
         // Apply saved appearance if any
         let mode = UserDefaults.standard.string(forKey: "WinVAppearanceMode") ?? "system"
         if mode == "light" {

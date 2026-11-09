@@ -89,16 +89,9 @@ public final class UpdateManager: ObservableObject {
         }
     }
 
-    public var isAutoCheckEnabled: Bool {
-        get {
-            if UserDefaults.standard.object(forKey: "WinVAutoCheckUpdates") == nil {
-                return true
-            }
-            return UserDefaults.standard.bool(forKey: "WinVAutoCheckUpdates")
-        }
-        set {
-            UserDefaults.standard.set(newValue, forKey: "WinVAutoCheckUpdates")
-            objectWillChange.send()
+    @Published public var isAutoCheckEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(isAutoCheckEnabled, forKey: "WinVAutoCheckUpdates")
         }
     }
 
@@ -119,6 +112,13 @@ public final class UpdateManager: ObservableObject {
             self.currentVersion = ver
         } else {
             self.currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        }
+
+        if UserDefaults.standard.object(forKey: "WinVAutoCheckUpdates") == nil {
+            self.isAutoCheckEnabled = true
+            UserDefaults.standard.set(true, forKey: "WinVAutoCheckUpdates")
+        } else {
+            self.isAutoCheckEnabled = UserDefaults.standard.bool(forKey: "WinVAutoCheckUpdates")
         }
 
         let savedTime = UserDefaults.standard.double(forKey: "WinVLastUpdateCheck")
