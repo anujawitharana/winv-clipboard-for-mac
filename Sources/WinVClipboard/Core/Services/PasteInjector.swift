@@ -142,4 +142,15 @@ public final class PasteInjector: @unchecked Sendable {
         let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
         _ = AXIsProcessTrustedWithOptions(options)
     }
+
+    public static var isFullDiskAccessGranted: Bool {
+        let testPath = (NSHomeDirectory() as NSString).appendingPathComponent("Library/Safari")
+        return FileManager.default.isReadableFile(atPath: testPath)
+    }
+
+    public static func promptForFullDiskAccess() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+            NSWorkspace.shared.open(url)
+        }
+    }
 }

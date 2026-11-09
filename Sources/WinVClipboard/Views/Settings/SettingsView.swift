@@ -194,179 +194,198 @@ public struct SettingsView: View {
             .tag(SettingsTab.permissions)
 
             // About Tab
-            VStack(spacing: 14) {
-                Spacer(minLength: 6)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 12) {
+                    // Header Brand
+                    VStack(spacing: 5) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.blue, Color(red: 0.05, green: 0.6, blue: 0.95)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 58, height: 58)
+                                .shadow(color: Color.blue.opacity(0.3), radius: 6, x: 0, y: 3)
 
-                // App Icon / Logo
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.blue, Color(red: 0.05, green: 0.6, blue: 0.95)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 68, height: 68)
-                        .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                            Image(systemName: "doc.on.clipboard.fill")
+                                .font(.system(size: 28, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
 
-                    Image(systemName: "doc.on.clipboard.fill")
-                        .font(.system(size: 32, weight: .semibold))
-                        .foregroundColor(.white)
-                }
+                        Text("WinV Clipboard")
+                            .font(.system(size: 17, weight: .bold))
 
-                VStack(spacing: 3) {
-                    Text("WinV Clipboard")
-                        .font(.system(size: 18, weight: .bold))
-
-                    Text("Version 1.0.0 (Build 1)")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-
-                    Text("Native Windows 11 Clipboard (`Win + V`) for macOS")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .padding(.top, 2)
-                }
-
-                Divider()
-                    .frame(maxWidth: 340)
-
-                VStack(spacing: 10) {
-                    HStack(spacing: 6) {
-                        Text("Created by")
-                            .font(.system(size: 12))
+                        Text("Version 1.0.0 (Build 1)")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
-                        Text("Anuja Witharana")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.primary)
-                    }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.primary.opacity(0.06)))
 
-                    HStack(spacing: 12) {
-                        Button(action: {
-                            if let url = URL(string: "https://github.com/anujawitharana") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "person.crop.circle")
-                                Text("GitHub Profile")
-                            }
-                            .frame(minWidth: 125)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.regular)
-
-                        Button(action: {
-                            if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "chevron.left.forwardslash.chevron.right")
-                                Text("Repository")
-                            }
-                            .frame(minWidth: 125)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.regular)
-                    }
-
-                    HStack(spacing: 12) {
-                        Button(action: {
-                            if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac/issues") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "ladybug")
-                                Text("Report an Issue")
-                            }
+                        Text("Native Windows 11 Clipboard (`Win + V`) for macOS")
                             .font(.system(size: 11))
-                        }
-                        .buttonStyle(.link)
-
-                        Text("•")
-                            .foregroundColor(.secondary.opacity(0.5))
-
-                        Button(action: {
-                            OnboardingWindowController.shared.show()
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "hand.wave")
-                                Text("Reopen Setup Guide")
-                            }
-                            .font(.system(size: 11))
-                        }
-                        .buttonStyle(.link)
+                            .foregroundColor(.secondary)
                     }
-                    .padding(.top, 2)
-                }
+                    .padding(.top, 4)
 
-                // In-App Update Status & Action Section
-                VStack(spacing: 8) {
-                    Divider()
-                        .frame(maxWidth: 340)
+                    // Card 1: Developer & Community
+                    VStack(spacing: 10) {
+                        HStack {
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundColor(.blue)
+                                    .font(.system(size: 15))
+                                Text("Developer")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                Text("Anuja Witharana")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.primary)
+                            }
 
-                    switch updateManager.status {
-                    case .idle:
-                        HStack(spacing: 8) {
+                            Spacer()
+
                             Button(action: {
-                                Task {
-                                    await updateManager.checkForUpdates(isUserInitiated: true)
+                                if let url = URL(string: "https://github.com/anujawitharana") {
+                                    NSWorkspace.shared.open(url)
                                 }
                             }) {
                                 HStack(spacing: 4) {
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                    Text("Check for Updates")
+                                    Image(systemName: "person.crop.circle")
+                                    Text("GitHub")
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+
+                            Button(action: {
+                                if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                    Text("Source Code")
                                 }
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
-
-                            if let last = updateManager.lastCheckedDate {
-                                Text("Last checked: \(formattedDate(last))")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-                            }
                         }
 
-                    case .checking:
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Checking for updates...")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
+                        Divider()
 
-                    case .upToDate(let version):
-                        HStack(spacing: 8) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                                .font(.system(size: 12))
-                            Text("WinV Clipboard \(version) is up to date.")
-                                .font(.system(size: 11))
-                            Button("Check Again") {
-                                Task {
-                                    await updateManager.checkForUpdates(isUserInitiated: true)
+                        HStack {
+                            Button(action: {
+                                if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac/issues") {
+                                    NSWorkspace.shared.open(url)
                                 }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "ladybug")
+                                    Text("Report an Issue")
+                                }
+                                .font(.system(size: 11))
                             }
                             .buttonStyle(.link)
-                            .font(.system(size: 11))
-                        }
 
-                    case .updateAvailable(let release):
-                        VStack(spacing: 6) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "sparkles")
-                                    .foregroundColor(.yellow)
-                                Text("Update Available: Version \(release.version)")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(.primary)
+                            Spacer()
+
+                            Button(action: {
+                                OnboardingWindowController.shared.show()
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "hand.wave")
+                                    Text("Reopen Setup Guide")
+                                }
+                                .font(.system(size: 11))
+                            }
+                            .buttonStyle(.link)
+                        }
+                    }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.primary.opacity(0.04))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
+
+                    // Card 2: Software Updates
+                    VStack(spacing: 10) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Software Updates")
+                                    .font(.system(size: 12, weight: .semibold))
+
+                                switch updateManager.status {
+                                case .idle:
+                                    if let last = updateManager.lastCheckedDate {
+                                        Text("Last checked: \(formattedDate(last))")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        Text("No checks performed yet.")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                    }
+
+                                case .checking:
+                                    HStack(spacing: 4) {
+                                        ProgressView().controlSize(.small)
+                                        Text("Checking GitHub for updates...")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                    }
+
+                                case .upToDate(let version):
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                        Text("Version \(version) is up to date.")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                    }
+
+                                case .updateAvailable(let release):
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "sparkles")
+                                            .foregroundColor(.orange)
+                                        Text("Version \(release.version) is available!")
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundColor(.orange)
+                                    }
+
+                                case .downloading(let progress):
+                                    Text("Downloading update (\(Int(progress * 100))%)...")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+
+                                case .extracting:
+                                    Text("Extracting update package...")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+
+                                case .readyToRestart:
+                                    Text("Relaunching WinV Clipboard...")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.green)
+
+                                case .error(let msg):
+                                    Text(msg)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.red)
+                                        .lineLimit(1)
+                                }
                             }
 
-                            HStack(spacing: 8) {
+                            Spacer()
+
+                            if case .updateAvailable(let release) = updateManager.status {
                                 Button(action: {
                                     Task {
                                         await updateManager.downloadAndInstall(release: release)
@@ -379,79 +398,56 @@ public struct SettingsView: View {
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .controlSize(.small)
-
-                                Button("View on GitHub") {
-                                    NSWorkspace.shared.open(release.releaseURL)
+                            } else {
+                                Button(action: {
+                                    Task {
+                                        await updateManager.checkForUpdates(isUserInitiated: true)
+                                    }
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "arrow.triangle.2.circlepath")
+                                        Text("Check Now")
+                                    }
                                 }
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
+                                .disabled(updateManager.status == .checking)
                             }
                         }
-                        .padding(8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.accentColor.opacity(0.08))
-                        )
 
-                    case .downloading(let progress):
-                        VStack(spacing: 4) {
-                            Text("Downloading update... \(Int(progress * 100))%")
-                                .font(.system(size: 11))
-                            ProgressView(value: progress)
-                                .frame(width: 180)
-                        }
+                        Divider()
 
-                    case .extracting:
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Extracting update package...")
+                        HStack {
+                            Toggle("Automatically check for updates on startup", isOn: $isAutoCheckEnabled)
                                 .font(.system(size: 11))
-                        }
-
-                    case .readyToRestart:
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Relaunching WinV Clipboard...")
-                                .font(.system(size: 11))
-                        }
-
-                    case .error(let message):
-                        HStack(spacing: 6) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                                .font(.system(size: 12))
-                            Text(message)
-                                .font(.system(size: 11))
-                                .lineLimit(1)
-                            Button("Retry") {
-                                Task {
-                                    await updateManager.checkForUpdates(isUserInitiated: true)
+                                .foregroundColor(.primary)
+                                .toggleStyle(.checkbox)
+                                .onChange(of: isAutoCheckEnabled) { _, newValue in
+                                    updateManager.isAutoCheckEnabled = newValue
                                 }
-                            }
-                            .buttonStyle(.link)
-                            .font(.system(size: 11))
+                            Spacer()
                         }
                     }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.primary.opacity(0.04))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
 
-                    Toggle("Automatically check for updates on startup", isOn: $isAutoCheckEnabled)
-                        .font(.system(size: 11))
-                        .foregroundColor(.primary)
-                        .toggleStyle(.checkbox)
-                        .onChange(of: isAutoCheckEnabled) { _, newValue in
-                            updateManager.isAutoCheckEnabled = newValue
-                        }
+                    // Footer
+                    Text("MIT License © 2026 Anuja Witharana • Free and Open Source")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary.opacity(0.8))
+                        .padding(.top, 2)
+                        .padding(.bottom, 6)
                 }
-
-                Spacer(minLength: 6)
-
-                Text("MIT License © 2026 Anuja Witharana. Free and Open Source.")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary.opacity(0.8))
-                    .padding(.bottom, 8)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 8)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .tabItem {
                 Label("About", systemImage: "info.circle")
             }

@@ -32,12 +32,6 @@ public final class StatusItemManager {
         showItem.target = self
         menu.addItem(showItem)
 
-        let isPaused = PrivacyFilter.shared.isMonitoringPaused
-        let pauseItem = NSMenuItem(title: isPaused ? "Resume Monitoring" : "Pause Monitoring", action: #selector(handleTogglePause), keyEquivalent: "")
-        pauseItem.state = isPaused ? .on : .off
-        pauseItem.target = self
-        menu.addItem(pauseItem)
-
         menu.addItem(NSMenuItem.separator())
 
         if let release = UpdateManager.shared.availableRelease {
@@ -46,10 +40,6 @@ public final class StatusItemManager {
             updateNoticeItem.image = NSImage(systemSymbolName: "arrow.down.circle.fill", accessibilityDescription: nil)
             menu.addItem(updateNoticeItem)
         }
-
-        let guideItem = NSMenuItem(title: "Setup Guide...", action: #selector(handleOpenOnboarding), keyEquivalent: "")
-        guideItem.target = self
-        menu.addItem(guideItem)
 
         let prefsItem = NSMenuItem(title: "Preferences...", action: #selector(handleOpenPreferences), keyEquivalent: ",")
         prefsItem.target = self
@@ -63,11 +53,14 @@ public final class StatusItemManager {
         updateCheckItem.target = self
         menu.addItem(updateCheckItem)
 
+        // Only show Accessibility item if permission is missing (requires user action)
         let isTrusted = PasteInjector.isAccessibilityTrusted
-        let permItem = NSMenuItem(title: isTrusted ? "Accessibility: Active" : "Accessibility: Required (Click to Grant)", action: #selector(handleCheckPermissions), keyEquivalent: "")
-        permItem.target = self
-        permItem.image = NSImage(systemSymbolName: isTrusted ? "checkmark.circle" : "exclamationmark.triangle", accessibilityDescription: nil)
-        menu.addItem(permItem)
+        if !isTrusted {
+            let permItem = NSMenuItem(title: "Accessibility: Required (Click to Grant)", action: #selector(handleCheckPermissions), keyEquivalent: "")
+            permItem.target = self
+            permItem.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil)
+            menu.addItem(permItem)
+        }
 
         menu.addItem(NSMenuItem.separator())
 
@@ -80,15 +73,6 @@ public final class StatusItemManager {
 
     @objc private func handleShowClipboard() {
         PanelController.shared.toggle()
-    }
-
-    @objc private func handleTogglePause() {
-        PrivacyFilter.shared.isMonitoringPaused.toggle()
-        rebuildMenu()
-    }
-
-    @objc private func handleOpenOnboarding() {
-        OnboardingWindowController.shared.show()
     }
 
     @objc private func handleOpenPreferences() {

@@ -7,6 +7,7 @@ public struct OnboardingView: View {
 
     @State private var currentStep: Int = 1
     @State private var isAccessibilityGranted: Bool = PasteInjector.isAccessibilityTrusted
+    @State private var isFullDiskAccessGranted: Bool = PasteInjector.isFullDiskAccessGranted
     @State private var launchAtLogin: Bool = LaunchAtLoginService.isEnabled
     @AppStorage("WinVAutoCheckUpdates") private var autoCheckUpdates: Bool = true
 
@@ -98,14 +99,16 @@ public struct OnboardingView: View {
             .padding(.vertical, 16)
             .background(Color(nsColor: .windowBackgroundColor).opacity(0.4))
         }
-        .frame(width: 560, height: 510)
+        .frame(width: 560, height: 530)
         .onReceive(timer) { _ in
             if currentStep == 2 {
                 isAccessibilityGranted = PasteInjector.isAccessibilityTrusted
+                isFullDiskAccessGranted = PasteInjector.isFullDiskAccessGranted
             }
         }
         .onAppear {
             isAccessibilityGranted = PasteInjector.isAccessibilityTrusted
+            isFullDiskAccessGranted = PasteInjector.isFullDiskAccessGranted
             launchAtLogin = LaunchAtLoginService.isEnabled
         }
     }
@@ -175,45 +178,51 @@ public struct OnboardingView: View {
 
     // MARK: - Step 2: Permissions View
     private var permissionsStepView: some View {
-        VStack(spacing: 16) {
-            Spacer()
+        VStack(spacing: 14) {
+            Spacer(minLength: 4)
 
-            Image(systemName: isAccessibilityGranted ? "checkmark.circle.fill" : "lock.shield.fill")
-                .font(.system(size: 46))
-                .foregroundColor(isAccessibilityGranted ? .green : .blue)
-                .animation(.spring(response: 0.4, dampingFraction: 0.6), value: isAccessibilityGranted)
-
-            VStack(spacing: 6) {
-                Text("Enable Accessibility Access")
+            VStack(spacing: 4) {
+                Text("System Permissions")
                     .font(.system(size: 20, weight: .bold))
 
-                Text("To paste clips directly into other applications without manual keystrokes, macOS requires Accessibility permission.")
+                Text("Grant the permissions below for seamless auto-pasting and photo copying.")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 20)
             }
 
-            // Interactive Status Card
-            VStack(spacing: 12) {
+            // Card 1: Accessibility
+            VStack(spacing: 10) {
                 HStack(spacing: 12) {
-                    Image(systemName: isAccessibilityGranted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    Image(systemName: isAccessibilityGranted ? "checkmark.circle.fill" : "command.circle.fill")
                         .font(.system(size: 22))
-                        .foregroundColor(isAccessibilityGranted ? .green : .orange)
+                        .foregroundColor(isAccessibilityGranted ? .green : .blue)
 
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(isAccessibilityGranted ? "Accessibility Permission Granted" : "Permission Required for Auto-Paste")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(isAccessibilityGranted ? .green : .primary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text("Accessibility")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("(Required for Auto-Paste)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
 
                         Text(isAccessibilityGranted
-                            ? "Auto-paste is fully configured and ready."
-                            : "Click below to open System Settings, then toggle WinV Clipboard to ON.")
+                            ? "Permission active. WinV can paste directly with ⌘V."
+                            : "Simulates paste keystrokes into your target apps.")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
 
                     Spacer()
+
+                    if isAccessibilityGranted {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.green)
+                            .padding(6)
+                            .background(Circle().fill(Color.green.opacity(0.12)))
+                    }
                 }
 
                 if !isAccessibilityGranted {
@@ -222,19 +231,19 @@ public struct OnboardingView: View {
                     }) {
                         HStack(spacing: 6) {
                             Image(systemName: "gearshape")
-                            Text("Open System Settings to Grant")
+                            Text("Grant Accessibility Permission")
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 5)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.regular)
                 }
             }
-            .padding(14)
+            .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isAccessibilityGranted ? Color.green.opacity(0.08) : Color.primary.opacity(0.04))
+                    .fill(isAccessibilityGranted ? Color.green.opacity(0.06) : Color.primary.opacity(0.04))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
@@ -242,13 +251,73 @@ public struct OnboardingView: View {
             )
             .padding(.horizontal, 24)
 
-            Text("Note: If you skip this, items will be copied to your clipboard so you can paste manually with ⌘V.")
+            // Card 2: Full Disk Access
+            VStack(spacing: 10) {
+                HStack(spacing: 12) {
+                    Image(systemName: isFullDiskAccessGranted ? "checkmark.circle.fill" : "internaldrive.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(isFullDiskAccessGranted ? .green : .indigo)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text("Full Disk Access")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("(Recommended for Images)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Text(isFullDiskAccessGranted
+                            ? "Permission active. Images copy without folder prompts."
+                            : "Previews and pastes images from Desktop, Downloads & Documents.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    if isFullDiskAccessGranted {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.green)
+                            .padding(6)
+                            .background(Circle().fill(Color.green.opacity(0.12)))
+                    }
+                }
+
+                if !isFullDiskAccessGranted {
+                    Button(action: {
+                        PasteInjector.promptForFullDiskAccess()
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "folder.badge.gearshape")
+                            Text("Open Full Disk Access Settings")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 5)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+                }
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isFullDiskAccessGranted ? Color.green.opacity(0.06) : Color.primary.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isFullDiskAccessGranted ? Color.green.opacity(0.2) : Color.primary.opacity(0.1), lineWidth: 1)
+            )
+            .padding(.horizontal, 24)
+
+            Text("Permissions update automatically as soon as enabled in macOS System Settings.")
                 .font(.system(size: 10))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
-            Spacer()
+            Spacer(minLength: 4)
         }
         .padding(.horizontal, 24)
     }

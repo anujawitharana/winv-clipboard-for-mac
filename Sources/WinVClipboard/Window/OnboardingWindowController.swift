@@ -25,7 +25,7 @@ public final class OnboardingWindowController: ObservableObject {
         let hostingView = NSHostingView(rootView: onboardingView)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 510),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 530),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
