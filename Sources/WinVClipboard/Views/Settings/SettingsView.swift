@@ -4,6 +4,7 @@ import AppKit
 @MainActor
 public struct SettingsView: View {
     @ObservedObject var controller: SettingsWindowController
+    @ObservedObject private var updateManager = UpdateManager.shared
     @AppStorage("WinVMaxHistory") private var maxHistory: Int = 50
     @AppStorage("WinVAutoExpireHours") private var autoExpireHours: Int = 0
     @AppStorage("WinVAppearanceMode") private var appearanceMode: String = "system"
@@ -285,6 +286,144 @@ public struct SettingsView: View {
                     .padding(.top, 2)
                 }
 
+                // In-App Update Status & Action Section
+                VStack(spacing: 8) {
+                    Divider()
+                        .frame(maxWidth: 340)
+
+                    switch updateManager.status {
+                    case .idle:
+                        HStack(spacing: 8) {
+                            Button(action: {
+                                Task {
+                                    await updateManager.checkForUpdates(isUserInitiated: true)
+                                }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                    Text("Check for Updates")
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+
+                            if let last = updateManager.lastCheckedDate {
+                                Text("Last checked: \(formattedDate(last))")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
+                    case .checking:
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Checking for updates...")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+
+                    case .upToDate(let version):
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 12))
+                            Text("WinV Clipboard \(version) is up to date.")
+                                .font(.system(size: 11))
+                            Button("Check Again") {
+                                Task {
+                                    await updateManager.checkForUpdates(isUserInitiated: true)
+                                }
+                            }
+                            .buttonStyle(.link)
+                            .font(.system(size: 11))
+                        }
+
+                    case .updateAvailable(let release):
+                        VStack(spacing: 6) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "sparkles")
+                                    .foregroundColor(.yellow)
+                                Text("Update Available: Version \(release.version)")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.primary)
+                            }
+
+                            HStack(spacing: 8) {
+                                Button(action: {
+                                    Task {
+                                        await updateManager.downloadAndInstall(release: release)
+                                    }
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "arrow.down.circle.fill")
+                                        Text("Install & Relaunch")
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+
+                                Button("View on GitHub") {
+                                    NSWorkspace.shared.open(release.releaseURL)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                        }
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.accentColor.opacity(0.08))
+                        )
+
+                    case .downloading(let progress):
+                        VStack(spacing: 4) {
+                            Text("Downloading update... \(Int(progress * 100))%")
+                                .font(.system(size: 11))
+                            ProgressView(value: progress)
+                                .frame(width: 180)
+                        }
+
+                    case .extracting:
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Extracting update package...")
+                                .font(.system(size: 11))
+                        }
+
+                    case .readyToRestart:
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Relaunching WinV Clipboard...")
+                                .font(.system(size: 11))
+                        }
+
+                    case .error(let message):
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                                .font(.system(size: 12))
+                            Text(message)
+                                .font(.system(size: 11))
+                                .lineLimit(1)
+                            Button("Retry") {
+                                Task {
+                                    await updateManager.checkForUpdates(isUserInitiated: true)
+                                }
+                            }
+                            .buttonStyle(.link)
+                            .font(.system(size: 11))
+                        }
+                    }
+
+                    Toggle("Automatically check for updates on startup", isOn: $updateManager.isAutoCheckEnabled)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .toggleStyle(.checkbox)
+                }
+
                 Spacer(minLength: 6)
 
                 Text("MIT License © 2026 Anuja Witharana. Free and Open Source.")
@@ -298,7 +437,7 @@ public struct SettingsView: View {
             }
             .tag(SettingsTab.about)
         }
-        .frame(width: 540, height: 440)
+        .frame(width: 540, height: 480)
         .onAppear {
             isAccessibilityTrusted = PasteInjector.isAccessibilityTrusted
             launchAtLogin = LaunchAtLoginService.isEnabled
@@ -315,5 +454,12 @@ public struct SettingsView: View {
         default:
             NSApp.appearance = nil
         }
+    }
+
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }

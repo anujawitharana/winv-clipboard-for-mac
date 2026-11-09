@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-blue.svg" alt="Platform: macOS 14.0+">
   <img src="https://img.shields.io/badge/swift-5.10%2B-orange.svg" alt="Swift 5.10+">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT">
-  <img src="https://img.shields.io/badge/tests-15%20passing-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-18%20passing-brightgreen.svg" alt="Tests">
 </p>
 
 ---
@@ -58,6 +58,7 @@ Built with **Swift**, **AppKit**, and **SwiftUI**, WinV Clipboard runs quietly i
 - **Asynchronous & Non-Blocking**: Zero main thread hitching during scrolling. Thumbnails and images decode asynchronously with an in-memory cache.
 - **Pinning & History Pruning**: Pin critical items so they survive "Clear all" and history size limits. Automatically prunes unpinned items beyond your configured threshold (default: 50 items).
 - **Rich Content Support**: Plain text, Rich Text (RTF), HTML snippets, Web URLs, File URLs, and visual bitmap images (PNG, JPEG, TIFF, HEIC, WebP).
+- **In-App GitHub Updates**: 1-click update checks directly against GitHub Releases with auto-download and relaunch, eliminating the need to visit the website or manually reinstall.
 - **Privacy & Password Manager Protection**: Automatic detection of concealed types and built-in exclusion of major password managers.
 
 ---

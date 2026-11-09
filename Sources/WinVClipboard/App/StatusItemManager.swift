@@ -40,6 +40,13 @@ public final class StatusItemManager {
 
         menu.addItem(NSMenuItem.separator())
 
+        if let release = UpdateManager.shared.availableRelease {
+            let updateNoticeItem = NSMenuItem(title: "Update Available: v\(release.version)", action: #selector(handleOpenAbout), keyEquivalent: "")
+            updateNoticeItem.target = self
+            updateNoticeItem.image = NSImage(systemSymbolName: "arrow.down.circle.fill", accessibilityDescription: nil)
+            menu.addItem(updateNoticeItem)
+        }
+
         let prefsItem = NSMenuItem(title: "Preferences...", action: #selector(handleOpenPreferences), keyEquivalent: ",")
         prefsItem.target = self
         menu.addItem(prefsItem)
@@ -47,6 +54,10 @@ public final class StatusItemManager {
         let aboutItem = NSMenuItem(title: "About WinV Clipboard", action: #selector(handleOpenAbout), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
+
+        let updateCheckItem = NSMenuItem(title: "Check for Updates...", action: #selector(handleCheckForUpdates), keyEquivalent: "")
+        updateCheckItem.target = self
+        menu.addItem(updateCheckItem)
 
         let isTrusted = PasteInjector.isAccessibilityTrusted
         let permItem = NSMenuItem(title: isTrusted ? "Accessibility: Active" : "Accessibility: Required (Click to Grant)", action: #selector(handleCheckPermissions), keyEquivalent: "")
@@ -78,6 +89,14 @@ public final class StatusItemManager {
 
     @objc private func handleOpenAbout() {
         SettingsWindowController.shared.show(tab: .about)
+    }
+
+    @objc private func handleCheckForUpdates() {
+        SettingsWindowController.shared.show(tab: .about)
+        Task { @MainActor in
+            await UpdateManager.shared.checkForUpdates(isUserInitiated: true)
+            self.rebuildMenu()
+        }
     }
 
     @objc private func handleCheckPermissions() {

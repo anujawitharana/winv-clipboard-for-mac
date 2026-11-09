@@ -451,4 +451,51 @@ final class WinVClipboardTests: XCTestCase {
         let shouldIgnore = filter.shouldIgnore(pasteboard: pasteboard, sourceBundleID: nil)
         XCTAssertTrue(shouldIgnore)
     }
+
+    func testVersionComparisonLogic() {
+        XCTAssertTrue(UpdateManager.isVersion("1.0.1", newerThan: "1.0.0"))
+        XCTAssertTrue(UpdateManager.isVersion("v1.2.0", newerThan: "1.1.9"))
+        XCTAssertTrue(UpdateManager.isVersion("2.0.0", newerThan: "1.99.99"))
+        XCTAssertTrue(UpdateManager.isVersion("1.0.1.1", newerThan: "1.0.1"))
+
+        XCTAssertFalse(UpdateManager.isVersion("1.0.0", newerThan: "1.0.0"))
+        XCTAssertFalse(UpdateManager.isVersion("1.0", newerThan: "1.0.0"))
+        XCTAssertFalse(UpdateManager.isVersion("0.9.9", newerThan: "1.0.0"))
+        XCTAssertFalse(UpdateManager.isVersion("v1.0.0", newerThan: "v1.0.1"))
+    }
+
+    func testGitHubReleaseJSONDecoding() throws {
+        let json = """
+        {
+            "id": 987654,
+            "tag_name": "v1.0.1",
+            "name": "WinV Clipboard v1.0.1",
+            "body": "Fixed image preview and keyboard navigation",
+            "html_url": "https://github.com/anujawitharana/clipbaord-for-mac/releases/tag/v1.0.1",
+            "assets": [
+                {
+                    "name": "WinVClipboard.app.zip",
+                    "browser_download_url": "https://github.com/anujawitharana/clipbaord-for-mac/releases/download/v1.0.1/WinVClipboard.app.zip"
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let release = try JSONDecoder().decode(GitHubRelease.self, from: json)
+        XCTAssertEqual(release.id, 987654)
+        XCTAssertEqual(release.tagName, "v1.0.1")
+        XCTAssertEqual(release.name, "WinV Clipboard v1.0.1")
+        XCTAssertEqual(release.body, "Fixed image preview and keyboard navigation")
+        XCTAssertEqual(release.assets.count, 1)
+        XCTAssertEqual(release.assets.first?.name, "WinVClipboard.app.zip")
+        XCTAssertEqual(release.assets.first?.browserDownloadURL, "https://github.com/anujawitharana/clipbaord-for-mac/releases/download/v1.0.1/WinVClipboard.app.zip")
+    }
+
+    @MainActor
+    func testUpdateManagerStatusAndAutoCheckDefaults() {
+        let manager = UpdateManager(currentVersion: "1.0.0")
+        XCTAssertEqual(manager.status, .idle)
+        XCTAssertEqual(manager.currentVersion, "1.0.0")
+        XCTAssertTrue(manager.isAutoCheckEnabled)
+    }
 }

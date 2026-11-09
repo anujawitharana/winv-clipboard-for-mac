@@ -28,6 +28,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup System Menu Bar Tray
         StatusItemManager.shared.setup()
 
+        // Non-blocking background update check on launch (respects 24h interval & user setting)
+        Task { @MainActor in
+            await UpdateManager.shared.checkForUpdates(isUserInitiated: false)
+            if UpdateManager.shared.availableRelease != nil {
+                StatusItemManager.shared.rebuildMenu()
+            }
+        }
+
         // Periodic auto-expire check every 15 minutes
         expireTimer = Timer.scheduledTimer(withTimeInterval: 900, repeats: true) { _ in
             let hours = UserDefaults.standard.integer(forKey: "WinVAutoExpireHours")
