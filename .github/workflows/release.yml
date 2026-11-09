@@ -18,15 +18,16 @@ jobs:
       - name: Build Application Bundle
         run: ./Scripts/build_app.sh
 
-      - name: Package Distribution Zip
+      - name: Package Distribution Release (DMG & Zip)
         run: |
-          ditto -c -k --sequesterRsrc --keepParent WinVClipboard.app WinVClipboard.app.zip
-          shasum -a 256 WinVClipboard.app.zip > WinVClipboard.app.zip.sha256
+          ./Scripts/package_release.sh
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            WinVClipboard.dmg
+            WinVClipboard.dmg.sha256
             WinVClipboard.app.zip
             WinVClipboard.app.zip.sha256
           draft: false

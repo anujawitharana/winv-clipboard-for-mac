@@ -103,8 +103,8 @@ Built with **Swift**, **AppKit**, and **SwiftUI**, WinV Clipboard runs quietly i
 ## Installation & Build Instructions
 
 ### Option 1: Download Release
-1. Download `WinVClipboard.app.zip` from the [Releases](https://github.com/anujawitharana/clipbaord-for-mac/releases) page.
-2. Unzip and drag `WinVClipboard.app` into your `/Applications` folder.
+1. Download **`WinVClipboard.dmg`** (or `WinVClipboard.app.zip`) from the [Releases](https://github.com/anujawitharana/clipbaord-for-mac/releases) page.
+2. Open the `.dmg` and drag **WinV Clipboard** into your `/Applications` folder.
 3. Launch the application from Applications or Spotlight.
 
 ### Option 2: Build from Source
