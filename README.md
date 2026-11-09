@@ -107,7 +107,7 @@ Built with **Swift**, **AppKit**, and **SwiftUI**, WinV Clipboard runs quietly i
 ## Requirements
 
 * **Operating System**: macOS 14.0 (Sonoma) or newer.
-* **Architecture**: Apple Silicon (M1/M2/M3/M4) or Intel 64-bit.
+* **Architecture**: Apple Silicon (M1/M2/M3/M4/M5) or Intel 64-bit.
 
 ---
 
