@@ -10,6 +10,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/tests-18%20passing-brightgreen.svg" alt="Tests">
   <a href="https://github.com/anujawitharana/clipbaord-for-mac/actions/workflows/ci.yml"><img src="https://github.com/anujawitharana/clipbaord-for-mac/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+  <a href="https://github.com/anujawitharana/clipbaord-for-mac/stargazers"><img src="https://img.shields.io/github/stars/anujawitharana/clipbaord-for-mac?style=social" alt="GitHub Stars"></a>
 </p>
 
 ---
@@ -185,6 +186,15 @@ WinV Clipboard is built with a **strict offline-first, privacy-by-design** archi
 - [ ] SQLite Full-Text Search (FTS5) for faster indexing of large histories.
 - [ ] Export and import clipboard history (JSON / encrypted backup).
 - [ ] Custom sound effects and haptic feedback.
+
+---
+
+## ⭐ Star This Repo
+
+If you find WinV Clipboard helpful, please give it a **Star** on [GitHub](https://github.com/anujawitharana/clipbaord-for-mac)!  
+It helps other macOS users discover the project and keeps open-source development active.
+
+---
 
 ---
 
