@@ -3,16 +3,22 @@ import AppKit
 import SwiftUI
 
 @MainActor
-public final class OnboardingWindowController: ObservableObject {
+public final class OnboardingWindowController: NSObject, ObservableObject, NSWindowDelegate {
     public static let shared = OnboardingWindowController()
 
     private var window: NSWindow?
 
-    private init() {}
+    private override init() {
+        super.init()
+    }
 
     public func show(initialStep: Int? = nil) {
+        UserDefaults.standard.set(true, forKey: "WinVOnboardingInProgress")
+
         if let step = initialStep {
             UserDefaults.standard.set(step, forKey: "WinVOnboardingCurrentStep")
+        } else if UserDefaults.standard.integer(forKey: "WinVOnboardingCurrentStep") == 0 {
+            UserDefaults.standard.set(1, forKey: "WinVOnboardingCurrentStep")
         }
 
         if let window = window {
@@ -22,6 +28,8 @@ public final class OnboardingWindowController: ObservableObject {
                 PanelController.shared.toggle()
             })
             window.contentView = NSHostingView(rootView: onboardingView)
+            window.level = .floating
+            window.orderFrontRegardless()
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
@@ -47,14 +55,26 @@ public final class OnboardingWindowController: ObservableObject {
         window.contentView = hostingView
         window.isReleasedWhenClosed = false
         window.isMovableByWindowBackground = true
+        window.level = .floating
+        window.delegate = self
 
         self.window = window
+        window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
     public func close() {
+        UserDefaults.standard.removeObject(forKey: "WinVOnboardingInProgress")
+        UserDefaults.standard.removeObject(forKey: "WinVOnboardingCurrentStep")
         window?.orderOut(nil)
+        window = nil
+    }
+
+    public func windowWillClose(_ notification: Notification) {
+        UserDefaults.standard.removeObject(forKey: "WinVOnboardingInProgress")
+        UserDefaults.standard.removeObject(forKey: "WinVOnboardingCurrentStep")
+        UserDefaults.standard.set(true, forKey: "WinVHasCompletedOnboarding")
         window = nil
     }
 }

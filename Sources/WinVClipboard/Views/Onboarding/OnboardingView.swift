@@ -115,6 +115,7 @@ public struct OnboardingView: View {
             }
         }
         .onChange(of: currentStep) { _, newStep in
+            UserDefaults.standard.set(true, forKey: "WinVOnboardingInProgress")
             UserDefaults.standard.set(newStep, forKey: "WinVOnboardingCurrentStep")
         }
         .onAppear {
@@ -122,6 +123,8 @@ public struct OnboardingView: View {
             if saved >= 1 && saved <= 3 {
                 currentStep = saved
             }
+            UserDefaults.standard.set(true, forKey: "WinVOnboardingInProgress")
+            UserDefaults.standard.set(currentStep, forKey: "WinVOnboardingCurrentStep")
             isAccessibilityGranted = PasteInjector.isAccessibilityTrusted
             isFullDiskAccessGranted = PasteInjector.isFullDiskAccessGranted
             launchAtLogin = LaunchAtLoginService.isEnabled
@@ -452,6 +455,7 @@ public struct OnboardingView: View {
     }
 
     private func finishOnboarding() {
+        UserDefaults.standard.removeObject(forKey: "WinVOnboardingInProgress")
         UserDefaults.standard.removeObject(forKey: "WinVOnboardingCurrentStep")
         UserDefaults.standard.set(true, forKey: "WinVHasCompletedOnboarding")
         onComplete()

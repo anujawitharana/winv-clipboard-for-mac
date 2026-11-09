@@ -36,10 +36,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup System Menu Bar Tray
         StatusItemManager.shared.setup()
 
-        // First-launch setup wizard check
+        // Setup Onboarding Wizard Check
         let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "WinVHasCompletedOnboarding")
-        if !hasCompletedOnboarding {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        let isOnboardingInProgress = UserDefaults.standard.bool(forKey: "WinVOnboardingInProgress")
+
+        if !hasCompletedOnboarding || isOnboardingInProgress {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 OnboardingWindowController.shared.show()
             }
         }
