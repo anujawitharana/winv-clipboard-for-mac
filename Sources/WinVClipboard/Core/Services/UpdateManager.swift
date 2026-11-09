@@ -105,7 +105,7 @@ public final class UpdateManager: ObservableObject {
     public let currentVersion: String
 
     public var repoOwner: String = "anujawitharana"
-    public var repoName: String = "clipbaord-for-mac"
+    public var repoName: String = "winv-clipboard-for-mac"
 
     public init(currentVersion: String? = nil) {
         if let ver = currentVersion {

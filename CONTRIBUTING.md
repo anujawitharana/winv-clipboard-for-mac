@@ -54,8 +54,8 @@ You can build and test directly from the command line:
 
 ```bash
 # Clone the repository
-git clone https://github.com/anujawitharana/clipbaord-for-mac.git
-cd clipbaord-for-mac
+git clone https://github.com/anujawitharana/winv-clipboard-for-mac.git
+cd winv-clipboard-for-mac
 
 # Run automated tests
 swift test

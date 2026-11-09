@@ -9,18 +9,18 @@
   <img src="https://img.shields.io/badge/swift-5.10%2B-orange.svg" alt="Swift 5.10+">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/tests-18%20passing-brightgreen.svg" alt="Tests">
-  <a href="https://github.com/anujawitharana/clipbaord-for-mac/actions/workflows/ci.yml"><img src="https://github.com/anujawitharana/clipbaord-for-mac/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
-  <a href="https://github.com/anujawitharana/clipbaord-for-mac/stargazers"><img src="https://img.shields.io/github/stars/anujawitharana/clipbaord-for-mac?style=social" alt="GitHub Stars"></a>
+  <a href="https://github.com/anujawitharana/winv-clipboard-for-mac/actions/workflows/ci.yml"><img src="https://github.com/anujawitharana/winv-clipboard-for-mac/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+  <a href="https://github.com/anujawitharana/winv-clipboard-for-mac/stargazers"><img src="https://img.shields.io/github/stars/anujawitharana/winv-clipboard-for-mac?style=social" alt="GitHub Stars"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/anujawitharana/clipbaord-for-mac">
+  <a href="https://github.com/anujawitharana/winv-clipboard-for-mac">
     <img src="https://img.shields.io/badge/%E2%AD%90%20Star%20this%20Repo-on%20GitHub-yellow?style=for-the-badge&logo=github" alt="Star this Repo on GitHub">
   </a>
 </p>
 
 <p align="center">
-  <sub>⭐️ <strong>Enjoying WinV Clipboard?</strong> Please <a href="https://github.com/anujawitharana/clipbaord-for-mac"><strong>star the repository</strong></a> to support future updates and help other Mac users discover it! ⭐️</sub>
+  <sub>⭐️ <strong>Enjoying WinV Clipboard?</strong> Please <a href="https://github.com/anujawitharana/winv-clipboard-for-mac"><strong>star the repository</strong></a> to support future updates and help other Mac users discover it! ⭐️</sub>
 </p>
 
 ---
@@ -114,7 +114,7 @@ Built with **Swift**, **AppKit**, and **SwiftUI**, WinV Clipboard runs quietly i
 ## Installation & Build Instructions
 
 ### Option 1: Download Release
-1. Download **`WinVClipboard.dmg`** (or `WinVClipboard.app.zip`) from the [Releases](https://github.com/anujawitharana/clipbaord-for-mac/releases) page.
+1. Download **`WinVClipboard.dmg`** (or `WinVClipboard.app.zip`) from the [Releases](https://github.com/anujawitharana/winv-clipboard-for-mac/releases) page.
 2. Open the `.dmg` and drag **WinV Clipboard** into your `/Applications` folder.
 3. Launch the application from Applications or Spotlight.
 
@@ -123,8 +123,8 @@ Ensure you have Xcode 15+ or the Swift command-line tools installed:
 
 ```bash
 # Clone the repository
-git clone https://github.com/anujawitharana/clipbaord-for-mac.git
-cd clipbaord-for-mac
+git clone https://github.com/anujawitharana/winv-clipboard-for-mac.git
+cd winv-clipboard-for-mac
 
 # Run automated tests
 swift test
@@ -201,7 +201,7 @@ WinV Clipboard is built with a **strict offline-first, privacy-by-design** archi
 
 ## ⭐ Star This Repo
 
-If you find WinV Clipboard helpful, please give it a **Star** on [GitHub](https://github.com/anujawitharana/clipbaord-for-mac)!  
+If you find WinV Clipboard helpful, please give it a **Star** on [GitHub](https://github.com/anujawitharana/winv-clipboard-for-mac)!  
 It helps other macOS users discover the project and keeps open-source development active.
 
 ---

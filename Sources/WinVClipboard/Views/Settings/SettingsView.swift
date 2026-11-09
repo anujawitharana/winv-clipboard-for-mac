@@ -253,7 +253,7 @@ public struct SettingsView: View {
                         .controlSize(.regular)
 
                         Button(action: {
-                            if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac") {
+                            if let url = URL(string: "https://github.com/anujawitharana/winv-clipboard-for-mac") {
                                 NSWorkspace.shared.open(url)
                             }
                         }) {
@@ -270,7 +270,7 @@ public struct SettingsView: View {
                     // Links Row
                     HStack(spacing: 12) {
                         Button(action: {
-                            if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac") {
+                            if let url = URL(string: "https://github.com/anujawitharana/winv-clipboard-for-mac") {
                                 NSWorkspace.shared.open(url)
                             }
                         }) {
@@ -288,7 +288,7 @@ public struct SettingsView: View {
                             .font(.system(size: 11))
 
                         Button(action: {
-                            if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac/issues") {
+                            if let url = URL(string: "https://github.com/anujawitharana/winv-clipboard-for-mac/issues") {
                                 NSWorkspace.shared.open(url)
                             }
                         }) {

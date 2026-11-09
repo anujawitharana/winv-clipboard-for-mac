@@ -471,11 +471,11 @@ final class WinVClipboardTests: XCTestCase {
             "tag_name": "v1.0.1",
             "name": "WinV Clipboard v1.0.1",
             "body": "Fixed image preview and keyboard navigation",
-            "html_url": "https://github.com/anujawitharana/clipbaord-for-mac/releases/tag/v1.0.1",
+            "html_url": "https://github.com/anujawitharana/winv-clipboard-for-mac/releases/tag/v1.0.1",
             "assets": [
                 {
                     "name": "WinVClipboard.app.zip",
-                    "browser_download_url": "https://github.com/anujawitharana/clipbaord-for-mac/releases/download/v1.0.1/WinVClipboard.app.zip"
+                    "browser_download_url": "https://github.com/anujawitharana/winv-clipboard-for-mac/releases/download/v1.0.1/WinVClipboard.app.zip"
                 }
             ]
         }
@@ -488,7 +488,7 @@ final class WinVClipboardTests: XCTestCase {
         XCTAssertEqual(release.body, "Fixed image preview and keyboard navigation")
         XCTAssertEqual(release.assets.count, 1)
         XCTAssertEqual(release.assets.first?.name, "WinVClipboard.app.zip")
-        XCTAssertEqual(release.assets.first?.browserDownloadURL, "https://github.com/anujawitharana/clipbaord-for-mac/releases/download/v1.0.1/WinVClipboard.app.zip")
+        XCTAssertEqual(release.assets.first?.browserDownloadURL, "https://github.com/anujawitharana/winv-clipboard-for-mac/releases/download/v1.0.1/WinVClipboard.app.zip")
     }
 
     @MainActor
