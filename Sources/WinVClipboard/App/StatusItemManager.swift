@@ -47,6 +47,10 @@ public final class StatusItemManager {
             menu.addItem(updateNoticeItem)
         }
 
+        let guideItem = NSMenuItem(title: "Setup Guide...", action: #selector(handleOpenOnboarding), keyEquivalent: "")
+        guideItem.target = self
+        menu.addItem(guideItem)
+
         let prefsItem = NSMenuItem(title: "Preferences...", action: #selector(handleOpenPreferences), keyEquivalent: ",")
         prefsItem.target = self
         menu.addItem(prefsItem)
@@ -81,6 +85,10 @@ public final class StatusItemManager {
     @objc private func handleTogglePause() {
         PrivacyFilter.shared.isMonitoringPaused.toggle()
         rebuildMenu()
+    }
+
+    @objc private func handleOpenOnboarding() {
+        OnboardingWindowController.shared.show()
     }
 
     @objc private func handleOpenPreferences() {

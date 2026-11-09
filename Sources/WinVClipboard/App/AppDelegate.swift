@@ -36,6 +36,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup System Menu Bar Tray
         StatusItemManager.shared.setup()
 
+        // First-launch setup wizard check
+        let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "WinVHasCompletedOnboarding")
+        if !hasCompletedOnboarding {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                OnboardingWindowController.shared.show()
+            }
+        }
+
         // Non-blocking background update check on launch (respects 24h interval & user setting)
         Task { @MainActor in
             await UpdateManager.shared.checkForUpdates(isUserInitiated: false)

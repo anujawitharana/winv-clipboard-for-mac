@@ -272,18 +272,34 @@ public struct SettingsView: View {
                         .controlSize(.regular)
                     }
 
-                    Button(action: {
-                        if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac/issues") {
-                            NSWorkspace.shared.open(url)
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            if let url = URL(string: "https://github.com/anujawitharana/clipbaord-for-mac/issues") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "ladybug")
+                                Text("Report an Issue")
+                            }
+                            .font(.system(size: 11))
                         }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "ladybug")
-                            Text("Report an Issue")
+                        .buttonStyle(.link)
+
+                        Text("•")
+                            .foregroundColor(.secondary.opacity(0.5))
+
+                        Button(action: {
+                            OnboardingWindowController.shared.show()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "hand.wave")
+                                Text("Reopen Setup Guide")
+                            }
+                            .font(.system(size: 11))
                         }
-                        .font(.system(size: 11))
+                        .buttonStyle(.link)
                     }
-                    .buttonStyle(.link)
                     .padding(.top, 2)
                 }
 
