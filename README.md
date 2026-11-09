@@ -9,6 +9,7 @@
   <img src="https://img.shields.io/badge/swift-5.10%2B-orange.svg" alt="Swift 5.10+">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/tests-18%20passing-brightgreen.svg" alt="Tests">
+  <a href="https://github.com/anujawitharana/clipbaord-for-mac/actions/workflows/ci.yml"><img src="https://github.com/anujawitharana/clipbaord-for-mac/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
 </p>
 
 ---

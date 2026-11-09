@@ -1,0 +1,50 @@
+name: Bug Report
+description: File a bug report to help improve WinV Clipboard
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please provide as much detail as possible.
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS Version
+      description: What version of macOS are you running? (e.g., macOS 14.5 Sonoma, macOS 15.1 Sequoia)
+      placeholder: macOS 14.5
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: WinV Clipboard Version
+      description: Check under Preferences -> About tab.
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what happened.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can someone reproduce this behavior?
+      value: |
+        1. Copy text or image in '...'
+        2. Press Option + V to open clipboard
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true

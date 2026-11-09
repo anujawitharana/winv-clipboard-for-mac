@@ -21,6 +21,8 @@ WinVClipboard.app/
 *.ipa
 *.pkg
 *.dmg
+*.zip
+*.sha256
 
 # Local Databases, Caches & History
 *.db
